@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="BurstLib">
+      <UniqueIdentifier>{BBC7B52B-FF23-0F84-BE5E-08FCFBF8C159}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BurstLib\Source">
+      <UniqueIdentifier>{AD1CB7A0-3F6E-DF32-A862-AE5298FB84E3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BurstLib\Source\crypto">
+      <UniqueIdentifier>{B26CA9D0-9159-A18C-5B4F-0183C547C3C8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Juce Library Code">
+      <UniqueIdentifier>{8B4D1BAA-6DB4-CAEC-A0FA-271F354D5C61}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\Source\crypto\aes.c">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\blowfish.cpp">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\Crytpo.cpp">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\curve25519_i64.c">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\sha256.cpp">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\BurstExt.cpp">
+      <Filter>BurstLib\Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\BurstKit.cpp">
+      <Filter>BurstLib\Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\BurstLib.cpp">
+      <Filter>BurstLib\Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\juce_core.cpp">
+      <Filter>Juce Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\juce_cryptography.cpp">
+      <Filter>Juce Library Code</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\Source\crypto\aes.h">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\aes.hpp">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\blowfish.h">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\Crypto.hpp">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\curve25519_i64.h">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\sha256.h">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\BurstExt.h">
+      <Filter>BurstLib\Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\BurstKit.h">
+      <Filter>BurstLib\Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\BurstLib.h">
+      <Filter>BurstLib\Source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\JuceLibraryCode\AppConfig.h">
+      <Filter>Juce Library Code</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\JuceLibraryCode\JuceHeader.h">
+      <Filter>Juce Library Code</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include=".\resources.rc">
+      <Filter>Juce Library Code</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

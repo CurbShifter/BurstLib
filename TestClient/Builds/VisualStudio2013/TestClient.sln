@@ -1,0 +1,19 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2013
+Project("{BB6A47DD-A74C-C6BE-DF6B-E6C8DBA383E3}") = "TestClient", "TestClient.vcxproj", "{0A1EA696-554B-D768-A4FF-E55844F78CA2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0A1EA696-554B-D768-A4FF-E55844F78CA2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0A1EA696-554B-D768-A4FF-E55844F78CA2}.Debug|Win32.Build.0 = Debug|Win32
+		{0A1EA696-554B-D768-A4FF-E55844F78CA2}.Release|Win32.ActiveCfg = Release|Win32
+		{0A1EA696-554B-D768-A4FF-E55844F78CA2}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
