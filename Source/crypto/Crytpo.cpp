@@ -86,13 +86,14 @@ MemoryBlock Crypto::sign(MemoryBlock data, MemoryBlock passPhrase)
 	const MemoryBlock h = sha256(m, Y);
 
 	MemoryBlock v(ECCKeyLength, true);
-	bool success = sign25519((unsigned char *)v.getData(), (unsigned char *)h.getData(), (unsigned char *)x.getData(), (unsigned char *)s.getData()) > 0;
-
-	MemoryBlock signature;
-	signature.append(v.getData(), ECCKeyLength);
-	signature.append(h.getData(), ECCKeyLength);
-
-	return signature;
+	if (sign25519((unsigned char *)v.getData(), (unsigned char *)h.getData(), (unsigned char *)x.getData(), (unsigned char *)s.getData()) > 0)
+	{
+		MemoryBlock signature;
+		signature.append(v.getData(), ECCKeyLength);
+		signature.append(h.getData(), ECCKeyLength);
+		return signature;
+	}
+	return MemoryBlock();
 }
 
 bool Crypto::verify(MemoryBlock signature, MemoryBlock pubKey, MemoryBlock data)
@@ -139,7 +140,7 @@ MemoryBlock Crypto::aesEncrypt(MemoryBlock plainText, MemoryBlock myPrivateKey, 
 	MemoryBlock sharedSecret = getSharedSecret(myPrivateKey, theirPublicKey);
 	unsigned char *sharedSecretPtr = (unsigned char *)sharedSecret.getData();
 	unsigned char *noncePtr = (unsigned char *)nonce.getData();
-	for (int i = 0; i < ECCKeyLength && i < sharedSecret.getSize(); i++)
+	for (unsigned int i = 0; i < ECCKeyLength && i < sharedSecret.getSize(); i++)
 		sharedSecretPtr[i] ^= noncePtr[i];
 	
 	MemoryBlock iv(IV_SIZE);
@@ -175,7 +176,7 @@ MemoryBlock Crypto::aesDecrypt(MemoryBlock ivCiphertext, MemoryBlock myPrivateKe
 	nonce.ensureSize(ECCKeyLength, true); // no mem overrun
 	unsigned char *sharedSecretPtr = (unsigned char *)dhSharedSecret.getData();
 	unsigned char *noncePtr = (unsigned char *)nonce.getData();
-	for (int i = 0; i < ECCKeyLength && i < dhSharedSecret.getSize(); i++)
+	for (unsigned int i = 0; i < ECCKeyLength && i < dhSharedSecret.getSize(); i++)
 		sharedSecretPtr[i] ^= noncePtr[i];
 	
 	MemoryBlock key = sha256(dhSharedSecret);

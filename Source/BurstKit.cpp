@@ -126,13 +126,9 @@ String BurstKit::CreateTX(String url, String feeNQT, String deadlineMinutes, boo
 		if ((verify.getIntValue() > 0 || verify.compareIgnoreCase("true") == 0) == false)
 			signedTransactionBytesStr.clear();
 	}
-	if (broadcast)
+	if (broadcast && signedTransactionBytesStr.isNotEmpty())
 		return broadcastTransaction(signedTransactionBytesStr);
 	else return signedTransactionBytesStr;
-
-/*	if (broadcast) // sign and broadcast tx bytes
-		return SignAndBroadcast(unsignedTransactionBytesStr);
-	else return */
 }
 
 String BurstKit::SignAndBroadcast(String unsignedTransactionBytesStr)
@@ -160,7 +156,6 @@ String BurstKit::Sign(String unsignedTransactionBytesStr)
 		//	URL signUrl(host + "burst?requestType=signTransaction&unsignedTransactionBytes=" + unsignedTransactionBytesStr + "&secretPhrase=" + secretPhraseEscapeChars);
 		//	String signUrlRes = signUrl.readEntireTextStream(true);
 		//	String transactionBytes; // the final transactionBytes. unsignedTransactionBytesStr + transactionBytesHex
-
 
 		return transactionBytesHex;
 	}
@@ -217,10 +212,16 @@ String BurstKit::ensureReedSolomon(String str)
 	return str;
 }
 
-String BurstKit::toBase64Encoding(unsigned char const* bytes_to_encode, unsigned int in_len)
-{
-	const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"abcdefghijklmnopqrstuvwxyz"
+	"0123456789+/";
 
+static inline bool is_base64(unsigned char c) {
+	return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+std::string BurstKit::toBase64Encoding(unsigned char const* bytes_to_encode, unsigned int in_len)
+{
 	std::string ret;
 	int i = 0;
 	int j = 0;
@@ -261,11 +262,9 @@ String BurstKit::toBase64Encoding(unsigned char const* bytes_to_encode, unsigned
 	return ret;
 }
 
-juce::MemoryBlock BurstKit::fromBase64EncodingToMB(String const& encoded_string)
+juce::MemoryBlock BurstKit::fromBase64EncodingToMB(std::string const& encoded_string)
 {
-	const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-	size_t in_len = encoded_string.length();
+	size_t in_len = encoded_string.size();
 	int i = 0;
 	int j = 0;
 	int in_ = 0;
@@ -276,8 +275,7 @@ juce::MemoryBlock BurstKit::fromBase64EncodingToMB(String const& encoded_string)
 		char_array_4[i++] = encoded_string[in_]; in_++;
 		if (i == 4) {
 			for (i = 0; i <4; i++)
-				char_array_4[i] = (unsigned char)base64_chars[char_array_4[i]];
-			//char_array_4[i] = (unsigned char)base64_chars.indexOfChar(char_array_4[i]);
+				char_array_4[i] = (unsigned char)base64_chars.find(char_array_4[i]);
 
 			char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
 			char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
@@ -294,8 +292,7 @@ juce::MemoryBlock BurstKit::fromBase64EncodingToMB(String const& encoded_string)
 			char_array_4[j] = 0;
 
 		for (j = 0; j <4; j++)
-			char_array_4[j] = (unsigned char)base64_chars[char_array_4[j]];
-		//char_array_4[j] = (unsigned char)base64_chars.indexOfChar(char_array_4[j]);
+			char_array_4[j] = (unsigned char)base64_chars.find(char_array_4[j]);
 
 		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
 		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
@@ -307,11 +304,9 @@ juce::MemoryBlock BurstKit::fromBase64EncodingToMB(String const& encoded_string)
 	return ret;
 }
 
-String BurstKit::fromBase64Encoding(String const& encoded_string)
+std::string BurstKit::fromBase64Encoding(std::string const& encoded_string)
 {
-	const String base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-	size_t in_len = encoded_string.length();
+	size_t in_len = encoded_string.size();
 	int i = 0;
 	int j = 0;
 	int in_ = 0;
@@ -322,7 +317,7 @@ String BurstKit::fromBase64Encoding(String const& encoded_string)
 		char_array_4[i++] = encoded_string[in_]; in_++;
 		if (i == 4) {
 			for (i = 0; i <4; i++)
-				char_array_4[i] = (unsigned char)base64_chars.indexOfChar(char_array_4[i]);
+				char_array_4[i] = (unsigned char)base64_chars.find(char_array_4[i]);
 
 			char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
 			char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
@@ -339,7 +334,7 @@ String BurstKit::fromBase64Encoding(String const& encoded_string)
 			char_array_4[j] = 0;
 
 		for (j = 0; j <4; j++)
-			char_array_4[j] = (unsigned char)base64_chars.indexOfChar(char_array_4[j]);
+			char_array_4[j] = (unsigned char)base64_chars.find(char_array_4[j]);
 
 		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
 		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);

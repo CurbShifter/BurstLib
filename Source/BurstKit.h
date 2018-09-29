@@ -245,12 +245,10 @@ public:
 		String id); // is the numerical ID, in decimal form but equivalent to an 8-byte unsigned integer as produced by SHA-256 hashing
 	String rsConvert( // Get both the Reed-Solomon account address and the account number given an account ID. 
 		String account); // is the account ID (either RS address or number)
-
 	
-
-	String toBase64Encoding(unsigned char const* bytes_to_encode, unsigned int in_len);
-	String fromBase64Encoding(String const& encoded_string);
-	MemoryBlock fromBase64EncodingToMB(String const& encoded_string);
+	std::string toBase64Encoding(unsigned char const* bytes_to_encode, unsigned int in_len);
+	std::string fromBase64Encoding(std::string const& encoded_string);
+	MemoryBlock fromBase64EncodingToMB(std::string const& encoded_string);
 
 private:
 	String CreateTX(
@@ -273,9 +271,9 @@ private:
 	MemoryBlock fromReedSolomonEncoding(StringArray encoded_strings);
 	String ensureReedSolomon(String str);
 
-	bool is_base64(const unsigned char c) {
+	/*bool is_base64(const unsigned char c) {
 		return (isalnum(c) || (c == '+') || (c == '/'));
-	}
+	}*/
 
 	Crypto crypto;
 	const char *burstKitVersionString;

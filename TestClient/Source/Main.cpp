@@ -22,6 +22,7 @@ Simple example showing the usage of BurstLib
 #define PASSPHRASE ""
 
 #include "BurstLib.h"
+#include "BurstLib.c"
 
 #include <string>
 #include <fstream>
@@ -30,12 +31,6 @@ Simple example showing the usage of BurstLib
 #include <math.h>
 #include <time.h>
 #include <vector>
-
-#ifndef UNICODE  
-typedef std::string String;
-#else
-typedef std::wstring String;
-#endif
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <stdio.h>
@@ -184,7 +179,7 @@ void cloudDownload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burst
 void cloudCalcCosts(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
 {
 	char msg[] = "testing 123";
-	char fileToUpload[] = "C:\\Users\\Jorn\\Desktop\\TEST\\test.txt";
+	char fileToUpload[] = "path\\test.txt";
 	long long stackSize = 10;
 	long long fee = 735000;
 
@@ -287,13 +282,16 @@ int main(int argc, char* argv[])
 	std::cout << ("version ") << burstLib.GetBurstLibVersionNumber(apiHandle) << std::endl << std::endl;
 
 	SetNode(apiHandle, burstLib);	
+	
+	// Basic functionality tests:
+
 	//suggestFee(apiHandle, burstLib);
 	//makeCoupon(apiHandle, burstLib);
 	//cloudDownload(apiHandle, burstLib);
 	//cloudCalcCosts(apiHandle, burstLib);
 	//cloudUpload(apiHandle, burstLib);
-
 	testDecryptMessage(apiHandle, burstLib);	
+
 
 error_end:
 	std::cout << ("\n\nCleaning up memory\n");
