@@ -1,19 +1,13 @@
 # BurstLib
-This dynamic library makes developing applications and tools for the Burst blockchain easier and secure.
+This dynamic library makes developing applications and tools compatible with the Burst blockchain easier. Providing secure access to the BRS functionality even on external nodes. Because the library signs transactions and encrypts messages locally. And gives direct access to Burst Extensions such as CloudBurst and BurstCoupon.
 
-It is a bridge between the BRS (Burst Reference Software) REST API and a standard C interface. Making it ready to be called from a wide range of programming languages such as c, c++, c#, ruby, python, java, scala, php, lua, ect.
+It is a bridge between the BRS (Burst Reference Software) REST API and a standard C interface. Making it ready to be called from a wide range of programming languages such as c, c++, c#, ruby, python, java, scala, php, lua, ect. The exported functions are listed in the BurstLib.h header.
 
-Providing secure and easy access to the BRS functionality as the library signs transactions and encrypts messages locally. And gives direct access to Burst Extensions such as CloudBurst and BurstCoupon.
-
-
-Status
--
-Work in progress
 
 
 Building
 -
-Build the library from the projects in the 'Builds' folder. All sources and libraries except boost++ are included in this repository. (boost++ is header only, download and add the include folder to your build). 
+Build the library from the projects in the 'Builds' folder (Windows MSVC/ MacOS XCode / Linux makefile) All sources and libraries except boost++ are included in this repository. (download it at boost.org and add the include folder to your build).
 
 Libraries used
 -
