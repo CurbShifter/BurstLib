@@ -26,9 +26,9 @@ using namespace juce;
 class BurstKit
 {
 public:
-	BurstKit(String hostUrl = "https://wallet1.burst-team.us:2083/");
-	//BurstKit(String hostUrl = "https://wallet.dev.burst-test.net/");
-	//BurstKit(String hostUrl = "https://wallet.burst.cryptoguru.org:8125/");
+	BurstKit(String hostUrl = "https://wallet1.burst-team.us:2083/", String passPhrase = String::empty);
+	//BurstKit(String hostUrl = "https://wallet.dev.burst-test.net/", String passPhrase);
+	//BurstKit(String hostUrl = "https://wallet.burst.cryptoguru.org:8125/", String passPhrase);
 
 	~BurstKit();
 
@@ -250,6 +250,17 @@ public:
 	std::string fromBase64Encoding(std::string const& encoded_string);
 	MemoryBlock fromBase64EncodingToMB(std::string const& encoded_string);
 
+	// cached account and host info
+	struct localAccountData
+	{
+		String secretPhrase;
+		String accountID;
+		String reedSolomon;
+		String pubKey_64HEX;
+	};
+	localAccountData accountData;
+	String host;
+
 private:
 	String CreateTX(
 		String url,
@@ -279,17 +290,6 @@ private:
 	const char *burstKitVersionString;
 	int lastErrorCode;
 	String lastErrorDescription;
-
-	// cached account and host info
-	struct localAccountData
-	{
-		String secretPhrase;
-		String accountID;
-		String reedSolomon;
-		String pubKey_64HEX;
-	};
-	localAccountData accountData;
-	String host;
 };
 
 #endif

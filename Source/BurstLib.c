@@ -102,7 +102,6 @@ void* InitFunctions(const char *libPath, BurstLib_FunctionHandles *burstLib)
 	burstLib->GetHandle = (BurstLib_GetHandle_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_GetHandle");
 	burstLib->DeleteHandle = (BurstLib_DeleteHandle_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_DeleteHandle");
 	burstLib->GetBurstLibVersionNumber = (BurstLib_GetBurstLibVersionNumber_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_GetBurstLibVersionNumber");
-	burstLib->GetBurstLibVersionString = (BurstLib_GetBurstLibVersionString_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_GetBurstLibVersionString");
 	burstLib->GetLastError = (BurstLib_GetLastError_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_GetLastError");
 	burstLib->SetNode = (BurstLib_SetNode_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_SetNode");
 	burstLib->GetNode = (BurstLib_GetNode_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_GetNode");
@@ -112,9 +111,13 @@ void* InitFunctions(const char *libPath, BurstLib_FunctionHandles *burstLib)
 	burstLib->GetJSONvalue = (BurstLib_GetJSONvalue_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_GetJSONvalue");
 
 	// Ext
-	burstLib->CloudDownload = (BurstLib_CloudDownload_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudDownload");
-	burstLib->CloudCalcCosts = (BurstLib_CloudCalcCosts_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudCalcCosts");
-	burstLib->CloudUpload = (BurstLib_CloudUpload_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudUpload");
+	burstLib->CloudDownloadStart = (BurstLib_CloudDownloadStart_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudDownloadStart");
+	burstLib->CloudDownloadFinished = (BurstLib_CloudDownloadFinished_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudDownloadFinished");
+	burstLib->CloudCalcCostsStart = (BurstLib_CloudCalcCostsStart_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudCalcCostsStart");
+	burstLib->CloudCalcCostsFinished = (BurstLib_CloudCalcCostsFinished_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudCalcCostsFinished");
+	burstLib->CloudUploadStart = (BurstLib_CloudUploadStart_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudUploadStart");
+	burstLib->CloudUploadFinished = (BurstLib_CloudUploadFinished_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudUploadFinished");
+	burstLib->CloudCancel = (BurstLib_CloudCancel_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CloudCancel");
 
 	burstLib->CreateCoupon = (BurstLib_CreateCoupon_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_CreateCoupon");
 	burstLib->RedeemCoupon = (BurstLib_RedeemCoupon_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_RedeemCoupon");

@@ -1,4 +1,3 @@
-//int main (int argc, char* argv[])
 /*
 Copyright (C) 2018  CurbShifter
 
@@ -15,41 +14,67 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
---------------------------------------------
-Simple example showing the usage of BurstLib
+---------------------------------------------------------------------
+Examples showing the usage of BurstLib
 */
 
 #define PASSPHRASE ""
+#define STR_SIZE 2048
 
 #include "BurstLib.h"
 #include "BurstLib.c"
 
 #include <string>
-#include <fstream>
-#include <sstream>
 #include <iostream>
-#include <math.h>
-#include <time.h>
 #include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
-#include <stdio.h>
 #include <tchar.h>
 #include <direct.h>
 #define GetCurrentDir _getcwd
+#else
+#include <unistd.h>
+#define GetCurrentDir getcwd
 #endif
 
-void SetNode(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+void SleepMS(int sleepMs)
 {
-	const char *walletUrl = "https://wallet.dev.burst-test.net/"; // TESTNET
-	//const char *walletUrl = "https://wallet1.burst-team.us:2083/";
-	//const char *walletUrl = "https://wallet.burst.cryptoguru.org:8125/";
-	if (burstLib.SetNode)
-		burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
+#if defined(_WIN32) || defined(_WIN64)
+	Sleep(sleepMs);
+#else
+	usleep(sleepMs * 1000);   // usleep takes sleep time in us (1 millionth of a second)
+#endif
 }
 
-void suggestFee(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+// ---------------------------------------------------------------------------------------------------------
+bool LoadLib(void **dll_handle, burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+{ // create a full path the to library file to load it at run time.
+	char library_path[FILENAME_MAX];
+	GetCurrentDir(library_path, sizeof(library_path)); // get execution dir
+#if defined(_WIN64) || defined(_WIN32)
+	strcat_s(library_path, FILENAME_MAX, "\\BurstLib.dll");
+#elif defined(__APPLE__)
+	strcat(library_path, "/BurstLib.dylib");
+#elif defined(__linux__)
+	strcat(library_path, "/BurstLib.so");
+#endif
+	std::cout << "Loading BurstLib library " << library_path << std::endl;
+	*dll_handle = BurstLib_LoadDLL(library_path, &burstLib);// Call the library functions
+	if (!dll_handle || burstLib.GetHandle == nullptr || burstLib.GetBurstLibVersionNumber == nullptr)
+	{
+		std::cout << std::endl << "BurstLib library not found!" << std::endl;
+		return false;
+	}
+	apiHandle = burstLib.GetHandle();
+	std::cout << ("version ") << burstLib.GetBurstLibVersionNumber(apiHandle) << std::endl << std::endl;
+	return (apiHandle != 0);
+}
+
+// ---------------------------------------------------------------------------------------------------------
+void suggestFee(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib, const char *walletUrl)
 {
+	burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
+
 	std::cout << ("suggestFee") << std::endl;
 	char suggestFee[1024];
 	int suggestFeeSize = 1024;
@@ -82,11 +107,9 @@ void suggestFee(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib
 	}
 }
 
-void testDecryptMessage(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+void testDecryptMessage(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib, const char *walletUrl)
 {
-	const char *walletUrl = "https://wallet1.burst-team.us:2083/";
-	if (burstLib.SetNode)
-		burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
+	burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
 
 	char account[] = "16922903237994405232";
 	char recipientSecretPhrase[] = "IWontTellYou";
@@ -94,9 +117,9 @@ void testDecryptMessage(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &
 	char nonce[] = "7cefa6f66d5b71604e2ef56a18319b3f48a38e8aa5cf610369b294f1d40e0f8e";
 	char messageIsText[] = "true";
 
-	char decrypted[1024 * 2];
-	int decryptedSize = 1024 * 2;
-	memset(&decrypted[0], 0, 1024 * 2);
+	char decrypted[STR_SIZE];
+	int decryptedSize = STR_SIZE;
+	memset(&decrypted[0], 0, STR_SIZE);
 
 	if (burstLib.decryptFrom(
 		apiHandle,
@@ -109,29 +132,36 @@ void testDecryptMessage(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &
 		std::cout << ("test decrypt : ") << decrypted << std::endl << std::endl; // "This is a message encrypted using \"encryptTo\"."
 }
 
-void makeCoupon(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+void makeCoupon(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib, const char *walletUrl,
+	const char *recipient,
+	const char *couponPassword,
+	const char *amountStr,
+	const char *deadlineStr,
+	const char *feeStr,
+	const char *walletPassPhrase)
 {
-	char recipient[] = "BURST-MXG8-YZAD-J9S8-C29YM";
-	char couponPassword[] = "test";
+	long long amount = atoi(amountStr);
+	long long deadline = atoi(deadlineStr);
+	long long fee = atoi(feeStr);
 
-	char walletPassPhrase[] = PASSPHRASE;
+	burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
 	burstLib.SetSecretPhrase(apiHandle, &walletPassPhrase[0], strlen(walletPassPhrase));
 
-	char signedTX[1024 * 2];
-	int signedTXSize = 1024 * 2;
-	memset(&signedTX[0], 0, 1024 * 2);
+	char signedTX[STR_SIZE];
+	int signedTXSize = STR_SIZE;
+	memset(&signedTX[0], 0, STR_SIZE);
 
 	if (burstLib.sendMoney(apiHandle,
 		&signedTX[0], signedTXSize,
 		&recipient[0], strlen(recipient),
 		1,
-		735000,
-		1440,
+		fee,
+		deadline,
 		false))
 	{
-		char couponHEX[1024 * 2];
-		int couponHEXSize = 1024 * 2;
-		memset(&couponHEX[0], 0, 1024 * 2);
+		char couponHEX[STR_SIZE];
+		int couponHEXSize = STR_SIZE;
+		memset(&couponHEX[0], 0, STR_SIZE);
 
 		if (burstLib.CreateCoupon(apiHandle,
 			&couponHEX[0], couponHEXSize,
@@ -145,27 +175,38 @@ void makeCoupon(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib
 	else std::cout << "failed to create transaction" << std::endl;
 }
 
-void cloudDownload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+void cloudDownload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib,
+	const char *walletUrl,
+	const char *cloudID,
+	const char *dlFolder)
 {
-	char cloudID[] = "CLOUD-JF9S-RC66-VUKV-6WYP8";// "CLOUD-KRFE-ZXS9-N28U-7DXUL";
-	char dlFolder[FILENAME_MAX];
-	GetCurrentDir(dlFolder, sizeof(dlFolder)); // get execution dir
+	burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
 
 	char *dlData = new char[1024 * 1024]; // 1mb
 	int dlDataSize = 1024 * 1024;
 	char *dlFilename = new char[1024]; // 1mb
 	int dlFilenameSize = 1024;
-	char msg[1024 * 2];
-	int msgSize = 1024 * 2;
-	memset(&msg[0], 0, 1024 * 2);
+	char msg[STR_SIZE];
+	int msgSize = STR_SIZE;
+	memset(&msg[0], 0, STR_SIZE);
+	unsigned long long epoch = 0;
 
-	if (burstLib.CloudDownload(apiHandle,
-		&msg[0], msgSize,
-		&cloudID[0], strlen(cloudID),
-		dlFolder, strlen(dlFolder),
-		dlFilename, dlFilenameSize,
-		dlData, dlDataSize))
+	if (burstLib.CloudDownloadStart(apiHandle,
+		cloudID, strlen(cloudID),
+		dlFolder, strlen(dlFolder)))
 	{
+		float progress = 0.f;
+		while (burstLib.CloudDownloadFinished(apiHandle,
+			&msg[0], msgSize,
+			cloudID, strlen(cloudID),
+			&dlFilename[0], dlFilenameSize,
+			&dlData[0], dlDataSize,
+			epoch,
+			progress) == false)
+		{
+			std::cout << (int)(progress * 100.f) << "%" << std::endl;
+			SleepMS(1000);
+		}
 		std::cout << std::string(&cloudID[0], strlen(cloudID)) << std::endl;
 		std::cout << "Message: " << std::string(&msg[0], msgSize) << std::endl;
 		if (strlen(dlFilename) > 0)
@@ -176,128 +217,178 @@ void cloudDownload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burst
 		delete dlData;
 }
 
-void cloudCalcCosts(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+void cloudUpload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib,
+	const char *walletUrl,
+	const char *msg,
+	const char *fileToUpload,
+	const char *stackSizeStr,
+	const char *feeStr,
+	const char *walletPassPhrase)
 {
-	char msg[] = "testing 123";
-	char fileToUpload[] = "path\\test.txt";
-	long long stackSize = 10;
-	long long fee = 735000;
+	long long stackSize = atoi(stackSizeStr);
+	long long fee = atoi(feeStr);
 
-	long long addressesNum = 0;
-	long long txFeePlancks = 0;
-	long long feePlancks = 0;
-	long long burnPlancks = 0;
+	burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
+	burstLib.SetSecretPhrase(apiHandle, walletPassPhrase, strlen(walletPassPhrase));
 
-	long long costsNQT = 0;
+	char jobId[STR_SIZE];
+	int jobIdSize = STR_SIZE;
+	memset(&jobId[0], 0, STR_SIZE);
 
-	char returnStr[1024 * 2];
-	int returnSize = 1024 * 2;
-	memset(&returnStr[0], 0, 1024 * 2);
-
-	if (burstLib.CloudCalcCosts(apiHandle,
-		&returnStr[0], returnSize,
+	if (burstLib.CloudUploadStart(apiHandle,
+		&jobId[0], jobIdSize,
 		&msg[0], strlen(msg),
 		&fileToUpload[0], strlen(fileToUpload),
 		stackSize,
-		fee,
-		addressesNum,
-		txFeePlancks,
-		feePlancks,
-		burnPlancks,
-		costsNQT))
+		fee))
 	{
-		std::cout << "costs to upload :" << std::string(&fileToUpload[0], strlen(fileToUpload)) << std::endl << costsNQT << " NQT" << std::endl << std::endl;
-	}
-	else std::cout << "failed to calc costs" << std::endl << std::endl;
-}
+		char uploadResult[STR_SIZE];
+		int uploadResultSize = STR_SIZE;
+		memset(&uploadResult[0], 0, STR_SIZE);
 
-void cloudUpload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
-{
-	char walletPassPhrase[] = PASSPHRASE;
-	burstLib.SetSecretPhrase(apiHandle, &walletPassPhrase[0], strlen(walletPassPhrase));
+		unsigned long long txFeePlancks = 0;
+		unsigned long long feePlancks = 0;
+		unsigned long long burnPlancks = 0;
+		unsigned long long costsNQT = 0;
+		unsigned long long confirmTime = 0;
 
-	char msg[] = "testing 123";
-	char fileToUpload[] = "";
-	long long stackSize = 10;
-	long long fee = 735000 * 2;
+		float progress = 0.f;
+		while (burstLib.CloudUploadFinished(apiHandle,
+			&uploadResult[0], uploadResultSize,
+			&jobId[0], jobIdSize,
+			txFeePlancks,
+			feePlancks,
+			burnPlancks,
+			costsNQT,
+			confirmTime,
+			progress) == false)
+		{
+			std::cout << (int)(progress * 100.f) << "%" << std::endl;
+			Sleep(1000);
+		}
 
-	long long addressesNum = 0;
-	long long txFeePlancks = 0;
-	long long feePlancks = 0;
-	long long burnPlancks = 0;
-
-	long long costsNQT = 0;
-
-	char result[1024 * 2];
-	int resultSize = 1024 * 2;
-	memset(&result[0], 0, 1024 * 2);
-
-	if (burstLib.CloudUpload(apiHandle,
-		&result[0], resultSize,
-		&msg[0], strlen(msg),
-		&fileToUpload[0], strlen(fileToUpload),
-		stackSize,
-		fee,
-		addressesNum,
-		txFeePlancks,
-		feePlancks,
-		burnPlancks,
-		costsNQT))
-	{
-		std::cout << "upload result: " << std::string(&result[0], resultSize) << std::endl << std::endl;
+		std::cout << "costs NQT: " << costsNQT << std::endl;
+		std::cout << "confirm seconds: " << confirmTime << std::endl;
+		std::cout << "upload result: " << std::string(&uploadResult[0], uploadResultSize) << std::endl;
 	}
 	else std::cout << "failed to upload" << std::endl << std::endl;
 }
 
+void cloudCalcCosts(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib,
+	const char *walletUrl,
+	const char *msg,
+	const char *fileToCalcCosts,
+	const char *stackSizeStr,
+	const char *feeStr,
+	const char *walletPassPhrase)
+{
+	long long stackSize = atoi(stackSizeStr);
+	long long fee = atoi(feeStr);
 
+	burstLib.SetNode(apiHandle, walletUrl, strlen(walletUrl));
+	burstLib.SetSecretPhrase(apiHandle, walletPassPhrase, strlen(walletPassPhrase));
+
+	char jobId[STR_SIZE];
+	int jobIdSize = STR_SIZE;
+	memset(&jobId[0], 0, STR_SIZE);
+
+	if (burstLib.CloudCalcCostsStart(apiHandle,
+		&jobId[0], jobIdSize,
+		&msg[0], strlen(msg),
+		&fileToCalcCosts[0], strlen(fileToCalcCosts),
+		stackSize,
+		fee))
+	{
+		char uploadResult[STR_SIZE];
+		int uploadResultSize = STR_SIZE;
+		memset(&uploadResult[0], 0, STR_SIZE);
+
+		unsigned long long txFeePlancks = 0;
+		unsigned long long feePlancks = 0;
+		unsigned long long burnPlancks = 0;
+		unsigned long long costsNQT = 0;
+		unsigned long long confirmTime = 0;
+
+		float progress = 0.f;
+		while (burstLib.CloudCalcCostsFinished(apiHandle,
+			&uploadResult[0], uploadResultSize,
+			&jobId[0], jobIdSize,
+			txFeePlancks,
+			feePlancks,
+			burnPlancks,
+			costsNQT,
+			confirmTime,
+			progress) == false)
+		{
+			std::cout << (int)(progress * 100.f) << "%" << std::endl;
+			Sleep(1000);
+		}
+		std::cout << "costs NQT: " << costsNQT << std::endl;
+		std::cout << "confirm seconds: " << confirmTime << std::endl;
+		std::cout << "Calc costs result: " << std::string(&uploadResult[0], uploadResultSize) << std::endl << std::endl;
+	}
+	else std::cout << "failed to upload" << std::endl << std::endl;
+}
+
+// ---------------------------------------------------------------------------------------------------------
 #if defined(_WIN32) || defined(_WIN64)
 int _tmain(int argc, _TCHAR* argv[])
 #else
-#include <unistd.h>
-#define GetCurrentDir getcwd
-
 int main(int argc, char* argv[])
 #endif
-{ // create a full path the to library file to load it at run time.
-	char library_path[FILENAME_MAX];
-	GetCurrentDir(library_path, sizeof(library_path)); // get execution dir
-#if defined(_WIN64) || defined(_WIN32)
-	strcat_s(library_path, FILENAME_MAX, "\\BurstLib.dll");
-#elif defined(__linux__)
-	strcat(library_path, "/BurstLib.so");
-#endif
+{
+	std::vector<std::string> allArgs(argv, argv + argc);
+
+	void *dll_handle = 0;
 	burstlibPtr apiHandle = 0;
 	BurstLib_FunctionHandles burstLib;
-	std::cout << "Loading BurstLib library " << library_path << std::endl;
-	void *dll_handle = BurstLib_LoadDLL(library_path, &burstLib);// Call the library functions
-	if (!dll_handle || burstLib.GetHandle == nullptr)
+	if (LoadLib(&dll_handle, apiHandle, burstLib) && allArgs.size() > 1)
 	{
-		std::cout << std::endl << "BurstLib library not found!" << std::endl;
-		goto error_end;
+		if (allArgs[1].compare("download") == 0 && allArgs.size() > 4)
+			cloudDownload(apiHandle, burstLib, allArgs[2].c_str(), allArgs[3].c_str(), allArgs[4].c_str());
+				
+		else if (allArgs[1].compare("upload") == 0 && allArgs.size() > 7)
+			cloudUpload(apiHandle, burstLib, allArgs[2].c_str(), allArgs[3].c_str(), allArgs[4].c_str(), allArgs[5].c_str(), allArgs[6].c_str(), allArgs[7].c_str());
+
+		else if (allArgs[1].compare("calc") == 0 && allArgs.size() > 7)
+			cloudCalcCosts(apiHandle, burstLib, allArgs[2].c_str(), allArgs[3].c_str(), allArgs[4].c_str(), allArgs[5].c_str(), allArgs[6].c_str(), allArgs[7].c_str());
+
+		else if (allArgs[1].compare("suggestFee") == 0 && allArgs.size() > 2)
+			suggestFee(apiHandle, burstLib, allArgs[2].c_str());
+
+		else if (allArgs[1].compare("makeCoupon") == 0 && allArgs.size() > 8)
+			makeCoupon(apiHandle, burstLib, allArgs[2].c_str(), allArgs[3].c_str(), allArgs[4].c_str(), allArgs[5].c_str(), allArgs[6].c_str(), allArgs[7].c_str(), allArgs[8].c_str());
+		else
+		{
+			std::cout << "Downloading:" << std::endl;
+			std::cout << "BurstClient download [wallet_url] [cloud_id] [download_folder_path optional]" << std::endl;
+			std::cout << "example:\ndownload \"https://wallet.dev.burst-test.net/\" CLOUD-B77X-C2R9-UD7C-HPASK \"\"" << std::endl << std::endl;
+
+			std::cout << "Uploading:" << std::endl;
+			std::cout << "BurstClient upload [wallet_url] [message] [filepath_to_upload optional] [stackSize] [feeBase] [wallet_PassPhrase]" << std::endl;
+			std::cout << "example:\nupload \"https://wallet.dev.burst-test.net/\" \"test message\" \"\" 10 735000 \"PASSPHRASE\"" << std::endl << std::endl;
+
+			std::cout << "Calc upload cost:" << std::endl;
+			std::cout << "BurstClient calc [wallet_url] [message] [filepath_to_upload optional] [stackSize] [feeBase] [wallet_PassPhrase optional]" << std::endl;
+			std::cout << "example:\ncalc \"https://wallet.dev.burst-test.net/\" \"test message\" \"\" 10 735000 \"PASSPHRASE\"" << std::endl << std::endl;
+
+			/* hosts
+			 https://wallet1.burst-team.us:2083/
+			 https://wallet.burst.cryptoguru.org:8125/
+			 https://127.0.0.1:8125/
+			
+			download "https://wallet1.burst-team.us:2083/" CLOUD-2J7G-GATT-V3D7-BJE62 ""
+			download "https://wallet.dev.burst-test.net/" CLOUD-B77X-C2R9-UD7C-HPASK ""
+			calc "https://wallet.dev.burst-test.net/" "test message" "" 10 735000 ""
+			upload "https://wallet.dev.burst-test.net/" "test message" "" 10 735000 "PASSPHRASE"
+			*/
+		}
+		//testDecryptMessage(apiHandle, burstLib);
 	}
-	apiHandle = burstLib.GetHandle();
-	if (!apiHandle)
-		goto error_end;
 
-	std::cout << ("version ") << burstLib.GetBurstLibVersionNumber(apiHandle) << std::endl << std::endl;
-
-	SetNode(apiHandle, burstLib);	
-	
-	// Basic functionality tests:
-
-	//suggestFee(apiHandle, burstLib);
-	//makeCoupon(apiHandle, burstLib);
-	//cloudDownload(apiHandle, burstLib);
-	//cloudCalcCosts(apiHandle, burstLib);
-	//cloudUpload(apiHandle, burstLib);
-	testDecryptMessage(apiHandle, burstLib);	
-
-
-error_end:
-	std::cout << ("\n\nCleaning up memory\n");
+	std::cout << "Cleaning up memory" << std::endl;
 	if (apiHandle && burstLib.DeleteHandle)
 		burstLib.DeleteHandle(apiHandle);
-
 	BurstLib_UnloadDLL(dll_handle);
 
 	std::cout << "Press enter key to quit" << std::endl;
@@ -305,3 +396,5 @@ error_end:
 
 	return 0;
 }
+
+

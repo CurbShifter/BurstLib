@@ -49,19 +49,6 @@ extern "C"
 		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 		return kit != NULL ? kit->GetBurstKitVersionNumber() : 0;
 	}
-	EXPORT bool BurstLib_BurstLibVersionString(const burstlibPtr handle, char *returnStr, int &returnBytes)
-	{
-		if (handle == NULL || returnBytes <= 0)
-			return false;
-		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
-
-		const char *vPtr = kit->GetBurstKitVersionString();
-		
-		const int vSize = strlen(vPtr);		
-		memcpy(returnStr, vPtr, jmin(returnBytes, vSize) * sizeof(char));
-		returnBytes = vSize;
-		return true;
-	}
 	EXPORT bool BurstLib_GetLastError(const burstlibPtr handle, char *returnStr, int &returnBytes)
 	{
 		if (handle == NULL || returnBytes <= 0)
@@ -136,7 +123,29 @@ extern "C"
 	}
 
 	// EXT ====================================================================================
-	EXPORT bool BurstLib_CloudDownload Args_CloudDownload
+	EXPORT bool BurstLib_CloudCancel Args_CloudCancel
+	{
+		if (handle == NULL || returnBytes <= 0)
+		return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
+
+		const String txt = kit->CloudCancel();
+		returnBytes = jmin(returnBytes, txt.length());
+		memcpy(returnStr, txt.toRawUTF8(), returnBytes * sizeof(char));
+		return true;
+	}
+	EXPORT bool BurstLib_CloudDownloadStart Args_CloudDownloadStart
+	{
+		if (handle == NULL)
+			return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
+						
+		return (kit->CloudDownloadStart(
+			String(cloudID, cloudIDBytes),
+			String(dlFolder, dlFolderBytes)));
+	}
+	
+	EXPORT bool BurstLib_CloudDownloadFinished Args_CloudDownloadFinished
 	{
 		if (handle == NULL)
 			return false;
@@ -146,95 +155,122 @@ extern "C"
 		String fileName;
 		MemoryBlock data;
 		String msgString;
-				
-		if (kit->CloudDownload(
+		uint64 epochLast = 0;
+		progress = 0.f;
+		if (kit->CloudDownloadFinished(
 			String(cloudID, cloudIDBytes),
-			String(dlFolder, dlFolderBytes),
 			fileName,
 			data,
-			msgString))
+			msgString, 
+			epochLast,
+			progress))
 		{
 			dlFilenameSize = fileName.copyToUTF8(dlFilename, dlFilenameSize);
 			returnBytes = msgString.copyToUTF8(returnStr, returnBytes);
 
-			if ((int)data.getSize() < dlDataSize)
+			if (dlData != 0 && (int)data.getSize() < dlDataSize)
 				data.copyTo(dlData, 0, data.getSize());
 
 			dlDataSize = data.getSize();
+			epoch = epochLast;
 
 			return true;
 		}
 		else return false;		
 	}
-	
-	EXPORT bool BurstLib_CloudCalcCosts Args_CloudCalcCosts
+
+	EXPORT bool BurstLib_CloudUploadStart Args_CloudUploadStart
 	{
 		if (handle == NULL)
-		return false;
+			return false;
 		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 
-		int64 addressesNum64 = 0;
-		uint64 txFeePlancks64 = 0;
-		uint64 feePlancks64 = 0;
-		uint64 burnPlancks64 = 0;
-		Array<StringArray> allAddresses;
+		uint64 deadline = 1440;
 
-		int64 costsNQT64 = kit->CloudCalcCosts(
+		String jobID = kit->CloudUploadStart(
 			String(message, messageBytes),
 			String(fileToUpload, fileToUploadBytes),
+			deadline,
 			stackSize,
-			fee,
-			allAddresses,
-			addressesNum64,
-			txFeePlancks64,
-			feePlancks64,
-			burnPlancks64);
-
-		addressesNum = addressesNum64;
-		txFeePlancks = txFeePlancks64;
-		feePlancks = feePlancks64;
-		burnPlancks = burnPlancks64;
-		costsNQT = costsNQT64;
-
-		returnBytes = String(costsNQT64).copyToUTF8(returnStr, returnBytes);
-
-		return true;
+			fee);
+		if (jobID.isNotEmpty())
+		{
+			returnBytes = jobID.copyToUTF8(returnStr, returnBytes);
+			return true;
+		}
+		return false;
 	}
 
-	EXPORT bool BurstLib_CloudUpload Args_CloudUpload
+	EXPORT bool BurstLib_CloudUploadFinished Args_CloudUploadFinished
 	{
 		if (handle == NULL)
-		return false;
+			return false;
 		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 
-		int64 addressesNum64 = 0;
-		uint64 txFeePlancks64 = 0;
-		uint64 feePlancks64 = 0;
-		uint64 burnPlancks64 = 0;
-		uint64 deadline = 1440;
+		// return datas
+		String cloudId;
 		Array<StringArray> allAddresses;
+		progress = 0.f;
+		if (kit->CloudUploadFinished(
+			String(jobId, jobIdBytes),
+			cloudId,
+			txFeePlancks,
+			feePlancks,
+			burnPlancks,
+			confirmTime,
+			progress))
+		{
+			returnBytes = cloudId.copyToUTF8(returnStr, returnBytes);
+			costsNQT = txFeePlancks + feePlancks + burnPlancks;
 
-		String cloudUpload = kit->CloudUpload(
+			return true;
+		}
+		return false;
+	}
+
+	EXPORT bool BurstLib_CloudCalcCostsStart Args_CloudCalcCostsStart
+	{
+		if (handle == NULL)
+			return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
+
+		String jobID = kit->CloudCalcCostsStart(
 			String(message, messageBytes),
 			String(fileToUpload, fileToUploadBytes),
 			stackSize,
-			fee,
-			allAddresses,
-			deadline,
-			addressesNum64,
-			txFeePlancks64,
-			feePlancks64,
-			burnPlancks64);
+			fee);
+		if (jobID.isNotEmpty())
+		{
+			returnBytes = jobID.copyToUTF8(returnStr, returnBytes);
 
-		addressesNum = addressesNum64;
-		txFeePlancks = txFeePlancks64;
-		feePlancks = feePlancks64;
-		burnPlancks = burnPlancks64;
-		costsNQT = txFeePlancks64 + feePlancks64 + burnPlancks64;
+			return true;
+		}
+		return false;
+	}
 
-		returnBytes = cloudUpload.copyToUTF8(returnStr, returnBytes);
+	EXPORT bool BurstLib_CloudCalcCostsFinished Args_CloudCalcCostsFinished
+	{
+		if (handle == NULL)
+			return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 
-		return true;
+		// return datas
+		Array<StringArray> allAddresses;
+		progress = 0.f;
+		if (kit->CloudCalcCostsFinished(
+			String(jobId, jobIdBytes),
+			txFeePlancks,
+			feePlancks,
+			burnPlancks,
+			confirmTime,
+			progress))
+		{
+			costsNQT = txFeePlancks + feePlancks + burnPlancks;
+			returnBytes = String(costsNQT).copyToUTF8(returnStr, returnBytes);
+
+			return true;
+		}
+		return false;
 	}
 
 	EXPORT bool BurstLib_CreateCoupon Args_CreateCoupon

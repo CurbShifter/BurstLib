@@ -23,8 +23,6 @@ extern "C"
 {
 #endif	// __cplusplus
 
-#define STR_SIZE 2048
-
 #if defined(WIN32) || defined(WIN64)
     #define SHOW
 	#if defined(EXPORT_LIB)
@@ -47,7 +45,6 @@ typedef unsigned long long burstlibPtr;
 #define Args_GetHandle ()
 #define Args_DeleteHandle (const burstlibPtr handle)
 #define Args_GetBurstLibVersionNumber (const burstlibPtr handle)
-#define Args_GetBurstLibVersionString (const burstlibPtr handle, char *returnStr, int &returnBytes)
 #define Args_GetLastError (const burstlibPtr handle, char *returnStr, int &returnBytes)
 #define Args_SetNode (const burstlibPtr handle, const char *hostUrl, const int hostUrlBytes)
 #define Args_GetNode (const burstlibPtr handle, char *returnStr, int &returnBytes)
@@ -57,9 +54,13 @@ typedef unsigned long long burstlibPtr;
 #define Args_GetJSONvalue (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *jsonStr, const int jsonBytes, const char *keyStr, const int keyBytes)
 
 // Ext
-#define Args_CloudDownload (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *cloudID, const int cloudIDBytes, const char *dlFolder, const int dlFolderBytes, char *dlFilename, int &dlFilenameSize, void *dlData, int &dlDataSize)
-#define Args_CloudCalcCosts (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *message, const int messageBytes, const char *fileToUpload, const int fileToUploadBytes, const long long stackSize, const long long fee, long long &addressesNum, long long &txFeePlancks, long long &feePlancks, long long &burnPlancks, long long &costsNQT)
-#define Args_CloudUpload (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *message, const int messageBytes, const char *fileToUpload, const int fileToUploadBytes, const long long stackSize, const long long fee, long long &addressesNum, long long &txFeePlancks, long long &feePlancks, long long &burnPlancks, long long &costsNQT)
+#define Args_CloudDownloadStart (const burstlibPtr handle, const char *cloudID, const int cloudIDBytes, const char *dlFolder, const int dlFolderBytes)
+#define Args_CloudDownloadFinished (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *cloudID, const int cloudIDBytes, char *dlFilename, int &dlFilenameSize, void *dlData, int &dlDataSize, unsigned long long &epoch, float &progress)
+#define Args_CloudUploadStart (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *message, const int messageBytes, const char *fileToUpload, const int fileToUploadBytes, const unsigned long long stackSize, const unsigned long long fee)
+#define Args_CloudUploadFinished (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *jobId, const int jobIdBytes, unsigned long long &txFeePlancks, unsigned long long &feePlancks, unsigned long long &burnPlancks, unsigned long long &costsNQT, unsigned long long &confirmTime, float &progress)
+#define Args_CloudCalcCostsStart (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *message, const int messageBytes, const char *fileToUpload, const int fileToUploadBytes, const unsigned long long stackSize, const unsigned long long fee)
+#define Args_CloudCalcCostsFinished (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *jobId, const int jobIdBytes, unsigned long long &txFeePlancks, unsigned long long &feePlancks, unsigned long long &burnPlancks, unsigned long long &costsNQT, unsigned long long &confirmTime, float &progress)
+#define Args_CloudCancel (const burstlibPtr handle, char *returnStr, int &returnBytes)
 
 #define Args_CreateCoupon (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *txSignedHexStr, const int txSignedHexBytes, const char *passwordStr, const int passwordBytes)
 #define Args_RedeemCoupon (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *couponHexStr, const int couponHexBytes, const char *passwordStr, const int passwordBytes)
@@ -77,12 +78,12 @@ typedef unsigned long long burstlibPtr;
 #define Args_getAccountTransactionIds (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes, const char *timestampStr, const int timestampBytes, const char *type, const int typeBytes, const char *subtype, const int subtypeBytes, const char *firstIndex, const int firstIndexBytes, const char *lastIndex, const int lastIndexBytes, const char *numberOfConfirmations, const int numberOfConfirmationsBytes)
 #define Args_getAccountPublicKey (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes)
 #define Args_getAccountTransactions (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes, const char *timestamp, const int timestampBytes, const char *type, const int typeBytes, const char *subtype, const int subtypeBytes, const char *firstIndex, const int firstIndexBytes, const char *lastIndex, const int lastIndexBytes, const char *numberOfConfirmations, const int numberOfConfirmationsBytes)
-#define Args_setAccountInfo (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *name, const int nameBytes, const char *description, const int descriptionBytes, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
+#define Args_setAccountInfo (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *name, const int nameBytes, const char *description, const int descriptionBytes, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
 #define Args_getAlias (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *alias, const int aliasBytes, const char *aliasName, const int aliasNameBytes)
-#define Args_setAlias (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *aliasName, const int aliasNameBytes, const char *aliasURI, const int aliasURIBytes, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
+#define Args_setAlias (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *aliasName, const int aliasNameBytes, const char *aliasURI, const int aliasURIBytes, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
 #define Args_getAliases (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *timestamp, const int timestampBytes, const char *account, const int accountBytes, const char *firstIndex, const int firstIndexBytes, const char *lastIndex, const int lastIndexBytes)
-#define Args_buyAlias (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *alias, const int aliasBytes, const char *aliasName, const int aliasNameBytes, const char *amountNQT, const int amountNQTBytes, const char *recipient, const int recipientBytes, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
-#define Args_sellAlias (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *alias, const int aliasBytes, const char *aliasName, const int aliasNameBytes, const char *priceNQT, const int priceNQTBytes, const char *recipient, const int recipientBytes, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
+#define Args_buyAlias (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *alias, const int aliasBytes, const char *aliasName, const int aliasNameBytes, const char *amountNQT, const int amountNQTBytes, const char *recipient, const int recipientBytes, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
+#define Args_sellAlias (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *alias, const int aliasBytes, const char *aliasName, const int aliasNameBytes, const char *priceNQT, const int priceNQTBytes, const char *recipient, const int recipientBytes, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
 #define Args_getBalance (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes, const char *includeEffectiveBalance, const int includeEffectiveBalanceBytes, const char *height, const int heightBytes, const char *requireBlock, const int requireBlockBytes, const char *requireLastBlock, const int requireLastBlockBytes)
 #define Args_getGuaranteedBalance (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes, const char *numberOfConfirmations, const int numberOfConfirmationsBytes)
 #define Args_getTransaction (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *transactionID, const int transactionIDBytes, const char *fullHash, const int fullHashBytes)
@@ -90,14 +91,14 @@ typedef unsigned long long burstlibPtr;
 #define Args_getUnconfirmedTransactions (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes)
 #define Args_parseTransaction (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *transactionBytes, const int transactionBytesBytes, const char *transactionJSON, const int transactionJSONBytes)
 #define Args_getTransactionBytes (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *transactionID, const int transactionIDBytes)
-#define Args_sendMoney (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipient, const int recipientBytes, const long long amountNQT, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
-#define Args_sendMoneyMulti (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipients, const int recipientsBytes, const char *amountsNQT, const int amountsNQTBytes, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
-#define Args_sendMoneyMultiSame (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipients, const int recipientsBytes, const long long amountNQT, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
+#define Args_sendMoney (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipient, const int recipientBytes, const unsigned long long amountNQT, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
+#define Args_sendMoneyMulti (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipients, const int recipientsBytes, const char *amountsNQT, const int amountsNQTBytes, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
+#define Args_sendMoneyMultiSame (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipients, const int recipientsBytes, const unsigned long long amountNQT, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
 #define Args_readMessage (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *transactionID, const int transactionIDBytes)
-#define Args_sendMessage (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *message, const int messageBytes, const char *messageIsText, const int messageIsTextBytes, const char *messageToEncrypt, const int messageToEncryptBytes, const char *messageToEncryptIsText, const int messageToEncryptIsTextBytes, const char *encryptedMessageData, const int encryptedMessageDataBytes, const char *encryptedMessageNonce, const int encryptedMessageNonceBytes, const char *messageToEncryptToSelf, const int messageToEncryptToSelfBytes, const char *messageToEncryptToSelfIsText, const int messageToEncryptToSelfIsTextBytes, const char *encryptToSelfMessageData, const int encryptToSelfMessageDataBytes, const char *encryptToSelfMessageNonce, const int encryptToSelfMessageNonceBytes, const char *recipientPublicKey, const int recipientPublicKeyBytes, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
+#define Args_sendMessage (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *message, const int messageBytes, const char *messageIsText, const int messageIsTextBytes, const char *messageToEncrypt, const int messageToEncryptBytes, const char *messageToEncryptIsText, const int messageToEncryptIsTextBytes, const char *encryptedMessageData, const int encryptedMessageDataBytes, const char *encryptedMessageNonce, const int encryptedMessageNonceBytes, const char *messageToEncryptToSelf, const int messageToEncryptToSelfBytes, const char *messageToEncryptToSelfIsText, const int messageToEncryptToSelfIsTextBytes, const char *encryptToSelfMessageData, const int encryptToSelfMessageDataBytes, const char *encryptToSelfMessageNonce, const int encryptToSelfMessageNonceBytes, const char *recipientPublicKey, const int recipientPublicKeyBytes, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
 #define Args_suggestFee (const burstlibPtr handle, char *returnStr, int &returnBytes)
 #define Args_getRewardRecipient (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes)
-#define Args_setRewardRecipient (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipient, const int recipientBytes, const long long feeNQT, const long long deadlineMinutes, const bool broadcast)
+#define Args_setRewardRecipient (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipient, const int recipientBytes, const unsigned long long feeNQT, const unsigned long long deadlineMinutes, const bool broadcast)
 #define Args_getBlock (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *block, const int blockBytes, const char *height, const int heightBytes, const char *timestamp, const int timestampBytes, const char *includeTransactions, const int includeTransactionsBytes)
 #define Args_getBlockId (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *height, const int heightBytes)
 #define Args_getBlockchainStatus (const burstlibPtr handle, char *returnStr, int &returnBytes)
@@ -120,7 +121,6 @@ typedef unsigned long long burstlibPtr;
 PREFIX_PORT burstlibPtr SHOW BurstLib_GetHandle Args_GetHandle;
 PREFIX_PORT bool SHOW BurstLib_DeleteHandle Args_DeleteHandle;
 PREFIX_PORT int SHOW BurstLib_GetBurstLibVersionNumber Args_GetBurstLibVersionNumber;
-PREFIX_PORT bool SHOW BurstLib_GetBurstLibVersionString Args_GetBurstLibVersionString;
 PREFIX_PORT bool SHOW BurstLib_GetLastError Args_GetLastError;
 PREFIX_PORT bool SHOW BurstLib_SetNode Args_SetNode;
 PREFIX_PORT bool SHOW BurstLib_GetNode Args_GetNode;
@@ -130,9 +130,13 @@ PREFIX_PORT bool SHOW BurstLib_GetAccount Args_GetAccount;
 PREFIX_PORT bool SHOW BurstLib_GetJSONvalue Args_GetJSONvalue;
 
 // Ext
-PREFIX_PORT bool SHOW BurstLib_CloudDownload Args_CloudDownload;
-PREFIX_PORT bool SHOW BurstLib_CloudCalcCosts Args_CloudCalcCosts;
-PREFIX_PORT bool SHOW BurstLib_CloudUpload Args_CloudUpload;
+PREFIX_PORT bool SHOW BurstLib_CloudDownloadStart Args_CloudDownloadStart;
+PREFIX_PORT bool SHOW BurstLib_CloudDownloadFinished Args_CloudDownloadFinished;
+PREFIX_PORT bool SHOW BurstLib_CloudCalcCostsStartFinished Args_CloudCalcCostsStart;
+PREFIX_PORT bool SHOW BurstLib_CloudCalcCostsFinished Args_CloudCalcCostsFinished;
+PREFIX_PORT bool SHOW BurstLib_CloudUploadStart Args_CloudUploadStart;
+PREFIX_PORT bool SHOW BurstLib_CloudUploadFinished Args_CloudUploadFinished;
+PREFIX_PORT bool SHOW BurstLib_CloudCancel Args_CloudCancel;
 
 PREFIX_PORT bool SHOW BurstLib_CreateCoupon Args_CreateCoupon;
 PREFIX_PORT bool SHOW BurstLib_RedeemCoupon Args_RedeemCoupon;
@@ -191,7 +195,6 @@ PREFIX_PORT bool SHOW BurstLib_rsConvert Args_rsConvert;
 typedef burstlibPtr(*BurstLib_GetHandle_Ptr) Args_GetHandle;
 typedef bool(*BurstLib_DeleteHandle_Ptr) Args_DeleteHandle;
 typedef int(*BurstLib_GetBurstLibVersionNumber_Ptr) Args_GetBurstLibVersionNumber;
-typedef bool(*BurstLib_GetBurstLibVersionString_Ptr) Args_GetBurstLibVersionString;
 typedef bool(*BurstLib_GetLastError_Ptr) Args_GetLastError;
 typedef bool(*BurstLib_SetNode_Ptr) Args_SetNode;
 typedef bool(*BurstLib_GetNode_Ptr) Args_GetNode;
@@ -201,9 +204,13 @@ typedef bool(*BurstLib_GetAccount_Ptr) Args_GetAccount;
 typedef bool(*BurstLib_GetJSONvalue_Ptr) Args_GetJSONvalue;
 
 // Ext
-typedef bool(*BurstLib_CloudDownload_Ptr) Args_CloudDownload;
-typedef bool(*BurstLib_CloudCalcCosts_Ptr) Args_CloudCalcCosts;
-typedef bool(*BurstLib_CloudUpload_Ptr) Args_CloudUpload;
+typedef bool(*BurstLib_CloudDownloadStart_Ptr) Args_CloudDownloadStart;
+typedef bool(*BurstLib_CloudDownloadFinished_Ptr) Args_CloudDownloadFinished;
+typedef bool(*BurstLib_CloudCalcCostsStart_Ptr) Args_CloudCalcCostsStart;
+typedef bool(*BurstLib_CloudCalcCostsFinished_Ptr) Args_CloudCalcCostsFinished;
+typedef bool(*BurstLib_CloudUploadStart_Ptr) Args_CloudUploadStart;
+typedef bool(*BurstLib_CloudUploadFinished_Ptr) Args_CloudUploadFinished;
+typedef bool(*BurstLib_CloudCancel_Ptr) Args_CloudCancel;
 
 typedef bool(*BurstLib_CreateCoupon_Ptr) Args_CreateCoupon;
 typedef bool(*BurstLib_RedeemCoupon_Ptr) Args_RedeemCoupon;
@@ -263,7 +270,6 @@ struct BurstLib_FunctionHandles
 	BurstLib_GetHandle_Ptr GetHandle;
 	BurstLib_DeleteHandle_Ptr DeleteHandle;
 	BurstLib_GetBurstLibVersionNumber_Ptr GetBurstLibVersionNumber;
-	BurstLib_GetBurstLibVersionString_Ptr GetBurstLibVersionString;
 	BurstLib_GetLastError_Ptr GetLastError;
 	BurstLib_SetNode_Ptr SetNode;
 	BurstLib_GetNode_Ptr GetNode;
@@ -273,9 +279,13 @@ struct BurstLib_FunctionHandles
 	BurstLib_GetJSONvalue_Ptr GetJSONvalue;
 
 	// Ext
-	BurstLib_CloudDownload_Ptr CloudDownload;
-	BurstLib_CloudCalcCosts_Ptr CloudCalcCosts;
-	BurstLib_CloudUpload_Ptr CloudUpload;
+	BurstLib_CloudDownloadStart_Ptr CloudDownloadStart;
+	BurstLib_CloudDownloadFinished_Ptr CloudDownloadFinished;
+	BurstLib_CloudCalcCostsStart_Ptr CloudCalcCostsStart;
+	BurstLib_CloudCalcCostsFinished_Ptr CloudCalcCostsFinished;
+	BurstLib_CloudUploadStart_Ptr CloudUploadStart;
+	BurstLib_CloudUploadFinished_Ptr CloudUploadFinished;
+	BurstLib_CloudCancel_Ptr CloudCancel;
 
 	BurstLib_CreateCoupon_Ptr CreateCoupon;
 	BurstLib_RedeemCoupon_Ptr RedeemCoupon;
@@ -329,7 +339,6 @@ struct BurstLib_FunctionHandles
 	BurstLib_longConvert_Ptr longConvert;
 	BurstLib_rsConvert_Ptr rsConvert;
 };
-
 
 #endif // IMPORT EXPORT
 #ifdef __cplusplus

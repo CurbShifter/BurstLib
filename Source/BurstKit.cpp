@@ -20,8 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace juce;
 
-BurstKit::BurstKit(String hostUrl) : host(hostUrl), burstKitVersionString(SVNRevision)
+BurstKit::BurstKit(String hostUrl, String passPhrase) : host(hostUrl), burstKitVersionString(SVNRevision)
 {
+	if (passPhrase.isNotEmpty())
+		SetSecretPhrase(passPhrase);
 }
 
 BurstKit::~BurstKit()
@@ -92,8 +94,6 @@ void BurstKit::SetAccount(String account)
 
 void BurstKit::SetAccountID(String accountID)
 {
-//	var jsonStructure = rsConvert(accountID);
-//	accountData.reedSolomon = jsonStructure["accountRS"].toString();
 	accountData.reedSolomon = GetJSONvalue(rsConvert(accountID), "accountRS");
 	accountData.accountID = accountID;
 }
@@ -104,8 +104,6 @@ void BurstKit::SetAccountRS(String reedSolomonIn)
 	if (accountData.reedSolomon.startsWith("BURST-") == false)
 		accountData.reedSolomon = ("BURST-") + accountData.reedSolomon;
 
-	//var jsonStructure = getAccount(accountData.reedSolomon);
-	//accountData.accountID = jsonStructure["account"].toString();
 	accountData.accountID = GetJSONvalue(getAccount(accountData.reedSolomon), "account");
 }
 
@@ -124,7 +122,10 @@ String BurstKit::CreateTX(String url, String feeNQT, String deadlineMinutes, boo
 
 		String verify = GetJSONvalue(parseResult, "verify");
 		if ((verify.getIntValue() > 0 || verify.compareIgnoreCase("true") == 0) == false)
+		{
 			signedTransactionBytesStr.clear();
+			Time::waitForMillisecondCounter(Time::getApproximateMillisecondCounter() + 100);
+		}
 	}
 	if (broadcast && signedTransactionBytesStr.isNotEmpty())
 		return broadcastTransaction(signedTransactionBytesStr);
@@ -409,7 +410,6 @@ String BurstKit::encryptTo( // Encrypt a message using AES without sending it.
 		return returnStr + nonce;
 	}
 	return String::empty;
-
 	//String chechReturnStr = GetUrlStr(host + "burst?requestType=encryptTo&account=" + ensureReedSolomon(recipient) + "&messageToEncrypt=" + messageToEncrypt + "&messageToEncryptIsText=" + messageToEncryptIsText + "&secretPhrase=" + secretPhraseEscapeChars);
 }
 
