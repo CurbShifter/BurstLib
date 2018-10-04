@@ -1,4 +1,4 @@
-![](https://raw.githubusercontent.com/CurbShifter/BurstLib/master/BurstExtensionsLogo.png)
+![](https://github.com/CurbShifter/BurstLib/blob/master/BurstExtensionsLogo.png)
 
 # BurstLib
 A cross platform dynamic library to make developing applications and tools compatible with the Burst blockchain easier. Providing secure access to the BRS functionality even on external nodes. Because the library signs transactions and encrypts messages locally. And gives direct access to Burst Extensions such as CloudBurst and BurstCoupon.
