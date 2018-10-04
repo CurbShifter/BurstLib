@@ -23,13 +23,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace juce;
 
+#define DE_TESTNET "https://wallet.dev.burst-test.net/"
+#define DE_NET "https://wallet.burst.cryptoguru.org:8125/"
+#define US_NET "https://wallet1.burst-team.us:2083/"
+
 class BurstKit
 {
 public:
-	BurstKit(String hostUrl = "https://wallet1.burst-team.us:2083/", String passPhrase = String::empty);
-	//BurstKit(String hostUrl = "https://wallet.dev.burst-test.net/", String passPhrase);
-	//BurstKit(String hostUrl = "https://wallet.burst.cryptoguru.org:8125/", String passPhrase);
-
+	BurstKit(String hostUrl = US_NET, String passPhrase = String::empty);
 	~BurstKit();
 
 	int GetBurstKitVersionNumber();
@@ -282,10 +283,6 @@ private:
 	MemoryBlock fromReedSolomonEncoding(StringArray encoded_strings);
 	String ensureReedSolomon(String str);
 
-	/*bool is_base64(const unsigned char c) {
-		return (isalnum(c) || (c == '+') || (c == '/'));
-	}*/
-
 	Crypto crypto;
 	const char *burstKitVersionString;
 	int lastErrorCode;
@@ -294,35 +291,25 @@ private:
 
 #endif
 
-/*	String cancelAskOrder(String order);
-String cancelBidOrder(String order);
-String createATProgram();
-String dgsDelisting();
-String dgsDelivery();
-String dgsFeedback();
-String dgsListing();
-String dgsPriceChange();
-String dgsPurchase();
-String dgsQuantityChange();
-String dgsRefund();
+/*
+cancelAskOrder
+cancelBidOrder
+createATProgram
 
-String escrowSign();
-String generateToken();
-
-String getAT();
-String getATDetails();
-String getATIds();
-String getATLong();
-String getAccountATs();
-
-String getAccountCurrentAskOrderIds();
-String getAccountCurrentAskOrders();
-String getAccountCurrentBidOrderIds();
-String getAccountCurrentBidOrders();
-String getAccountEscrowTransactions();
+escrowSign
+generateToken
+getAT
+getATDetails
+getATIds
+getATLong
+getAccountATs
+getAccountCurrentAskOrderIds
+getAccountCurrentAskOrders
+getAccountCurrentBidOrderIds
+getAccountCurrentBidOrders
+getAccountEscrowTransactions
 getAccountLessors
 getAccountSubscriptions
-
 getAllAssets
 getAllOpenAskOrders
 getAllOpenBidOrders
@@ -340,6 +327,14 @@ getBidOrder
 getBidOrderIds
 getBidOrders
 
+dgsDelisting
+dgsDelivery
+dgsFeedback
+dgsListing
+dgsPriceChange
+dgsPurchase
+dgsQuantityChange
+dgsRefund
 getDGSGood
 getDGSGoods
 getDGSPendingPurchases
@@ -362,6 +357,6 @@ submitNonce
 subscriptionCancel
 transferAsset
 
-String getAccountsWithRewardRecipient();
+getAccountsWithRewardRecipient();
 
 */
