@@ -264,7 +264,7 @@ void cloudUpload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLi
 			progress) == false)
 		{
 			std::cout << (int)(progress * 100.f) << "%" << std::endl;
-			Sleep(1000);
+			SleepMS(1000);
 		}
 
 		std::cout << "costs NQT: " << costsNQT << std::endl;
@@ -321,7 +321,7 @@ void cloudCalcCosts(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burs
 			progress) == false)
 		{
 			std::cout << (int)(progress * 100.f) << "%" << std::endl;
-			Sleep(1000);
+			SleepMS(1000);
 		}
 		std::cout << "costs NQT: " << costsNQT << std::endl;
 		std::cout << "confirm seconds: " << confirmTime << std::endl;
