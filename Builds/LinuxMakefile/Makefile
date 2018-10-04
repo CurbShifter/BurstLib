@@ -38,7 +38,7 @@ ifeq ($(CONFIG),Debug)
   JUCE_CXXFLAGS += $(JUCE_CFLAGS) -std=c++11 $(CXXFLAGS)
   JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -shared $(shell pkg-config --libs libcurl) -ldl -lpthread -lrt  $(LDFLAGS)
 
-  TARGET := libBurstLib.a
+  TARGET := libBurstLib.so
   BLDCMD = $(CXX) -o $(JUCE_OUTDIR)/$(TARGET) $(OBJECTS) $(JUCE_LDFLAGS) $(RESOURCES) $(TARGET_ARCH)
   CLEANCMD = rm -rf $(JUCE_OUTDIR)/$(TARGET) $(JUCE_OBJDIR)
 endif
@@ -58,7 +58,7 @@ ifeq ($(CONFIG),Release)
   JUCE_CXXFLAGS += $(JUCE_CFLAGS) -std=c++11 $(CXXFLAGS)
   JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -shared -fvisibility=hidden $(shell pkg-config --libs libcurl) -ldl -lpthread -lrt  $(LDFLAGS)
 
-  TARGET := libBurstLib.a
+  TARGET := libBurstLib.so
   BLDCMD = $(CXX) -o $(JUCE_OUTDIR)/$(TARGET) $(OBJECTS) $(JUCE_LDFLAGS) $(RESOURCES) $(TARGET_ARCH)
   CLEANCMD = rm -rf $(JUCE_OUTDIR)/$(TARGET) $(JUCE_OBJDIR)
 endif
