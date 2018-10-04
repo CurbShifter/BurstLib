@@ -1,4 +1,10 @@
+
 #include "blowfish.h"
+
+#include <cstring>
+
+using namespace std;
+
 
 BLOWFISH::BLOWFISH(std::string hexKey)
 {
