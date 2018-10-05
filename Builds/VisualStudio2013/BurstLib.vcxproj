@@ -110,6 +110,9 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OutputFile>$(IntDir)\BurstLib.bsc</OutputFile>
     </Bscmake>
+    <PreBuildEvent>
+      <Command>revision-update.bat "$(ProjectDir)..\..\"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
@@ -152,6 +155,9 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <OutputFile>$(IntDir)\BurstLib.bsc</OutputFile>
     </Bscmake>
+    <PreBuildEvent>
+      <Command>revision-update.bat "$(ProjectDir)..\..\"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>

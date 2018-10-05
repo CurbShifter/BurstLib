@@ -2,12 +2,12 @@
 #ifndef __SubWCRev__
 #define __SubWCRev__
 
-#define SVNRevisionN 1
-#define SVNRevision "1"
+#define SVNRevisionN 11
+#define SVNRevision "11"
 #define SVNModified "Modified"
-#define SVNDate     "2018/09/14 22:58:54"
+#define SVNDate     "2018/10/05 00:12:00"
 #define SVNRange    "WCRANGE$"
-#define SVNMixed    "Not mixed"
+#define SVNMixed    "Mixed revision"
 #define SVNURL      "https://github.com/CurbShifter/BurstLib.git/trunk"
 
 //#if 1
