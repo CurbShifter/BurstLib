@@ -28,6 +28,10 @@ Examples showing the usage of BurstLib
 #include <iostream>
 #include <vector>
 
+#if defined(__linux__)
+#include <cstring.h>
+#endif
+
 #if defined(_WIN32) || defined(_WIN64)
 #include <tchar.h>
 #include <direct.h>

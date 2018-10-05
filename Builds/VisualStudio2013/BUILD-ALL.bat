@@ -20,7 +20,7 @@ msbuild.exe "BurstLib.sln" /t:rebuild /maxcpucount:8 /flp1:logfile=errors32.txt;
 :: -----------------------------------------------------------------------------------------------
 echo Create package
 
-DEL /q "%root%\pkg\BurstLib\"
+::DEL /q "%root%\pkg\BurstLib\"
 del "%root%\pkg\BurstLib-Win.zip"
 
 xcopy /y "%root%\Source\BurstLib.h" "%root%\pkg\BurstLib\C\BurstLib.h*"
