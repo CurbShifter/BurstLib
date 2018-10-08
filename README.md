@@ -11,9 +11,9 @@ Use it
 -
 Use the TestClient example [Main.cpp](https://github.com/CurbShifter/BurstLib/blob/master/TestClient/Source/Main.cpp " BurstLib/TestClient/Source/Main.cpp ") as a guideline. It is a simple command line program through which you can up and download cloudburst files and messages. It is written in C++ and uses the c-interface to the library. However the same calls can be made from other languages. For example [Pinvoke](https://msdn.microsoft.com/en-us/library/55d3thsc.aspx?f=255&MSPPError=-2147217396) for  .NET / C#).
 
-For C/C++ The bare minimum would be to include the BurstLib.c and .h files in your project. Then you first create a handle to the binary with _BurstLib___LoadDLL_ (and matching _BurstLib___UnloadDLL_ !). Next you create a handle to the BurstLib itself with *GetHandle* (+ *DeleteHandle*). And then call *SetNode* to set the url of your node.
+For C/C++ The bare minimum would be to include the BurstLib.c and .h files in your project. Then you first create a handle to the binary with _BurstLib_LoadDLL_ (and matching _BurstLib_UnloadDLL_ !). Next you create a handle to the BurstLib itself with *GetHandle* (+ *DeleteHandle*). And then call *SetNode* to set the url of your node.
 
-After that you can call all the lib functions, they are named just like the [The Burst API](https://burstwiki.org/wiki/The_Burst_API) functions and use the same arguments. With an exception for for the secret pass phrase, which you set with *BurstLib_SetSecretPhrase*. Then only when needed your transactions are locally signed and parsed before being (optionally) broadcast. So it doesn't publicly slings your keys over the internet and ensures validity. 
+After that you can call all the lib functions, they are named just like the [The Burst API](https://burstwiki.org/wiki/The_Burst_API) functions and use the same arguments. With an exception for for the secret pass phrase, which you set with *BurstLib_SetSecretPhrase*. Then only when needed your transactions are locally signed and parsed before being (optionally) broadcast. So it doesn't publicly sling your keys over the internet and ensures validity by parsing the transaction.
 
 There are 3 layers to this lib;
 
@@ -21,6 +21,11 @@ There are 3 layers to this lib;
 2. BurstExt includes the extensions CloudBurst and BurstCoupon. Which in itself is inherited from BurstKit
 3. BurstKit is the main bridge to the BRS API and includes the crypto + 3rd party libraries.
  
+Todo
+-
+- Include messaging system tagged to other transactions
+- Simplify message encryption
+- Include AT tx services Escrow/DSG/Assets
 
 Building
 -
