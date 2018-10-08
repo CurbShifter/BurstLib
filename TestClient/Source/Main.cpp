@@ -29,7 +29,7 @@ Examples showing the usage of BurstLib
 #include <vector>
 
 #if defined(__linux__)
-#include <cstring.h>
+#include <cstring>
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
