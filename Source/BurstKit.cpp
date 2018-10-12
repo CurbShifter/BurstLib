@@ -734,6 +734,7 @@ String BurstKit::readMessage( // Get a message given a transaction ID.
 String BurstKit::sendMessage( // Create an Arbitrary Message transaction. POST only. Refer to Create Transaction Request for common parameters. 
 	// Note: Any combination (including none or all) of the three options plain message, messageToEncrypt, and messageToEncryptToSelf will be included in the transaction. 
 	// However, one and only one prunable message may be included in a single transaction if there is not already a message of the same type (either plain or encrypted). 
+	String recipient,
 	String message, // is either UTF - 8 text or a string of hex digits(perhaps previously encoded using an arbitrary algorithm) to be converted into a bytecode with a maximum length of one kilobyte(optional)
 	String messageIsText, // is false if the message is a hex string, otherwise the message is text (optional)
 	String messageToEncrypt, // is either UTF-8 text or a string of hex digits to be compressed and converted into a bytecode with a maximum length of one kilobyte, then encrypted using AES (optional)
@@ -750,7 +751,8 @@ String BurstKit::sendMessage( // Create an Arbitrary Message transaction. POST o
 	bool broadcast)
 {
 	String url(host + "burst?requestType=sendMessage" +
-		(message.isNotEmpty() ? "&message=" + message : "") +
+		(recipient.isNotEmpty() ? "&recipient=" + recipient : "") +
+		(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) : "") +
 		(messageIsText.isNotEmpty() ? "&messageIsText=" + messageIsText : "") +
 		(messageToEncrypt.isNotEmpty() ? "&messageToEncrypt=" + messageToEncrypt : "") +
 		(messageToEncryptIsText.isNotEmpty() ? "&messageToEncryptIsText=" + messageToEncryptIsText : "") +

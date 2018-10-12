@@ -52,9 +52,9 @@ public:
 
 // API
 	String broadcastTransaction( // Broadcast a transaction to the network. POST only.
-		String signedTransactionBytesStr); // is the bytecode of a signed transaction (optional)
+		String signedTransactionBytesStr); // is the bytecode of a signed transaction
 	String calculateFullHash(
-		String unsignedTransactionBytes, // is the unsigned bytes of a transaction (optional if unsignedTransactionJSON is provided)
+		String unsignedTransactionBytes, // is the unsigned bytes of a transaction
 		String signatureHash); // is the SHA-256 hash of the transaction signature
 	String decryptFrom( // Decrypt an AES-encrypted message. 
 		String account, // is the account ID of the recipient
@@ -71,36 +71,36 @@ public:
 		String account_RS_or_ID); // is the account ID (or ReedSolomon, detected by BURST- Prefix and non numerical chars)
 	String getAccountBlockIds( // Get the block IDs of all blocks forged (generated) by an account in reverse block height order. 
 		String account, // is the account ID of the recipient
-		String timestamp, // is the earliest block(in seconds since the genesis block) to retrieve(optional)
-		String firstIndex, // is the zero-based index to the first block to retrieve (optional)
-		String lastIndex); // is the zero-based index to the last block to retrieve (optional)
+		String timestamp = String::empty, // is the earliest block(in seconds since the genesis block) to retrieve(optional)
+		String firstIndex = String::empty, // is the zero-based index to the first block to retrieve (optional)
+		String lastIndex = String::empty); // is the zero-based index to the last block to retrieve (optional)
 	String getAccountBlocks( // Get all blocks forged (generated) by an account in reverse block height order. 
 		String account, // is the account ID of the recipient
-		String timestamp, // is the earliest block(in seconds since the genesis block) to retrieve (optional)
-		String firstIndex, // is the zero - based index to the first block to retrieve (optional)
-		String lastIndex, // is the zero - based index to the last block to retrieve (optional)
-		String includeTransactions); // is the true to retrieve transaction details, otherwise only transaction IDs are retrieved (optional)
+		String timestamp = String::empty, // is the earliest block(in seconds since the genesis block) to retrieve (optional)
+		String firstIndex = String::empty, // is the zero - based index to the first block to retrieve (optional)
+		String lastIndex = String::empty, // is the zero - based index to the last block to retrieve (optional)
+		String includeTransactions = String::empty); // is the true to retrieve transaction details, otherwise only transaction IDs are retrieved (optional)
 		
 	String getAccountId( // Get an account ID given public key. (or a secret passphrase (POST only))
 		String pubKey_64HEX); // is the public key of the account
 	String getAccountTransactionIds( // Get the transaction IDs associated with an account in reverse block timestamp order. Note: Refer to Get Constants for definitions of types and subtypes
 		String account, // is the account ID
-		String timestamp, // is the earliest block(in seconds since the genesis block) to retrieve(optional)
-		String type, // is the type of transactions to retrieve(optional)
-		String subtype, // is the subtype of transactions to retrieve(optional)
-		String firstIndex, // is the a zero - based index to the first transaction ID to retrieve(optional)
-		String lastIndex, // is the a zero - based index to the last transaction ID to retrieve(optional)
-		String numberOfConfirmations); // is the required number of confirmations per transaction(optional)
+		String timestamp = String::empty, // is the earliest block(in seconds since the genesis block) to retrieve(optional)
+		String type = String::empty, // is the type of transactions to retrieve(optional)
+		String subtype = String::empty, // is the subtype of transactions to retrieve(optional)
+		String firstIndex = String::empty, // is the a zero - based index to the first transaction ID to retrieve(optional)
+		String lastIndex = String::empty, // is the a zero - based index to the last transaction ID to retrieve(optional)
+		String numberOfConfirmations = String::empty); // is the required number of confirmations per transaction(optional)
 	String getAccountPublicKey( // Get the public key associated with an account ID. 
 		String account); // is the account ID
 	String getAccountTransactions( // Get the transactions associated with an account in reverse block timestamp order. 
 		String account, // is the account ID
-		String timestamp, // is the earliest block(in seconds since the genesis block) to retrieve(optional)
-		String type, // is the type of transactions to retrieve(optional)
-		String subtype, // is the subtype of transactions to retrieve(optional)
-		String firstIndex, // is the a zero - based index to the first transaction ID to retrieve(optional)
-		String lastIndex, // is the a zero - based index to the last transaction ID to retrieve(optional)
-		String numberOfConfirmations); // is the required number of confirmations per transaction(optional)
+		String timestamp = String::empty, // is the earliest block(in seconds since the genesis block) to retrieve(optional)
+		String type = String::empty, // is the type of transactions to retrieve(optional)
+		String subtype = String::empty, // is the subtype of transactions to retrieve(optional)
+		String firstIndex = String::empty, // is the a zero - based index to the first transaction ID to retrieve(optional)
+		String lastIndex = String::empty, // is the a zero - based index to the last transaction ID to retrieve(optional)
+		String numberOfConfirmations = String::empty); // is the required number of confirmations per transaction(optional)
 		
 	String setAccountInfo( // Set account information. POST only. Refer to Create Transaction Request for common parameters. 
 		String name, // is the name to associate with the account
@@ -111,7 +111,7 @@ public:
 	
 	String getAlias( // Get information about a given alias. 
 		String alias, // is the alias ID (optional)
-		String aliasName); // is the name of the alias (optional if alias provided)
+		String aliasName = String::empty); // is the name of the alias (optional if alias provided)
 	String setAlias( // Create and/or assign an alias. POST only. Refer to Create Transaction Request for common parameters. 
 		String aliasName, // is the alias name
 		String aliasURI, // is the alias URI(e.g.http://www.google.com/)
@@ -119,10 +119,10 @@ public:
 		String deadlineMinutes,
 		bool broadcast = true);
 	String getAliases( // Get information on aliases owned by a given account in alias name order. 
-		String timestamp, // is the earliest creation time(in seconds since the genesis block) of the aliases(optional)
 		String account, // is the ID of the account that owns the aliases
-		String firstIndex, // is the zero - based index to the first alias to retrieve(optional)
-		String lastIndex); // is the zero - based index to the last alias to retrieve(optional)
+		String timestamp = String::empty, // is the earliest creation time(in seconds since the genesis block) of the aliases(optional)
+		String firstIndex = String::empty, // is the zero - based index to the first alias to retrieve(optional)
+		String lastIndex = String::empty); // is the zero - based index to the last alias to retrieve(optional)
 	String buyAlias( // Buy an alias. POST only. Refer to Create Transaction Request for common parameters. 
 		String alias, // is the ID of the alias (optional)
 		String aliasName, // is the alias name (optional if alias provided)
@@ -152,14 +152,14 @@ public:
 
 	String getTransaction( // Get a transaction object given a transaction ID. 
 		String transactionID, // a transaction ID. 
-		String fullHash); //  is the full hash of the transaction (optional if transaction ID is provided)	
+		String fullHash = String::empty); //  is the full hash of the transaction (optional if transaction ID is provided)	
 	String getUnconfirmedTransactionsIds( // Get a list of unconfirmed transaction IDs associated with an account. 
-		String account); // is the account ID(optional)
+		String account = String::empty); // is the account ID(optional)
 	String getUnconfirmedTransactions( // Get a list of unconfirmed transactions associated with an account. 
 		String account); // is the account ID(optional)		
 	String parseTransaction( // Get a transaction object given a (signed or unsigned) transaction bytecode, or re-parse a transaction object. Verify the signature.
 		String transactionBytes, // is the signed or unsigned bytecode of the transaction(optional)
-		String transactionJSON); // is the transaction object(optional if transactionBytes is included)		
+		String transactionJSON = String::empty); // is the transaction object(optional if transactionBytes is included)		
 	String getTransactionBytes( // Get the bytecode of a transaction. 
 		String transaction); // is the transaction ID		
 
@@ -187,6 +187,7 @@ public:
 	String sendMessage( // Create an Arbitrary Message transaction. POST only. Refer to Create Transaction Request for common parameters. 
 		// Note: Any combination (including none or all) of the three options plain message, messageToEncrypt, and messageToEncryptToSelf will be included in the transaction. 
 		// However, one and only one prunable message may be included in a single transaction if there is not already a message of the same type (either plain or encrypted). 
+		String recipient, // is the account ID of the recipient.
 		String message, // is either UTF - 8 text or a string of hex digits(perhaps previously encoded using an arbitrary algorithm) to be converted into a bytecode with a maximum length of one kilobyte(optional)
 		String messageIsText, // is false if the message is a hex string, otherwise the message is text (optional)
 		String messageToEncrypt, // is either UTF-8 text or a string of hex digits to be compressed and converted into a bytecode with a maximum length of one kilobyte, then encrypted using AES (optional)
