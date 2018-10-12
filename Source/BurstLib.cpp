@@ -739,6 +739,7 @@ extern "C"
 		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 
 		String returnString = kit->sendMessage(
+			String(recipient, recipientBytes),
 			String(message, messageBytes),
 			String(messageIsText, messageIsTextBytes),
 			String(messageToEncrypt, messageToEncryptBytes), 
