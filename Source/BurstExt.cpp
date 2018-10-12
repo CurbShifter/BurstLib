@@ -685,7 +685,7 @@ String BurstExt::BurstJob::CloudUpload()//String message, File fileToUpload, uin
 							upload.allAddresses[transactionNumber],
 							String(dropSize),
 							String(upload.fee + (735000 * (transactionNumber % upload.stackSize))),
-							String(upload.deadline * 60));
+							String(upload.deadline));
 					}
 
 					String transactionID = GetJSONvalue(result, "transaction"); // the ID of the newly created transaction
