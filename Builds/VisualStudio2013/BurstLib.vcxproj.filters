@@ -22,6 +22,9 @@
     <ClCompile Include="..\..\Source\crypto\blowfish.cpp">
       <Filter>BurstLib\Source\crypto</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\BurstAddress.cpp">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\crypto\Crytpo.cpp">
       <Filter>BurstLib\Source\crypto</Filter>
     </ClCompile>
@@ -55,6 +58,9 @@
       <Filter>BurstLib\Source\crypto</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\crypto\blowfish.h">
+      <Filter>BurstLib\Source\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\BurstAddress.h">
       <Filter>BurstLib\Source\crypto</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\crypto\Crypto.hpp">

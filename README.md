@@ -1,9 +1,9 @@
-![](https://github.com/CurbShifter/BurstLib/blob/master/BurstExtensionsLogo.png)
+![](https://github.com/CurbShifter/BurstLib/blob/master/Cext.png)
 
-# [@BurstExtensions](https://twitter.com/BurstExtensions) #
+# [CryptoExtensions](https://twitter.com/BurstExtensions) #
 
 # BurstLib
-A cross platform dynamic library to make developing applications and tools compatible with the [Burst blockchain](https://www.burst-coin.org/ "burst-coin.org") easier. Providing secure access to the BRS functionality even on external nodes. Because the library signs transactions and encrypts messages locally. It also gives direct access to Burst Extensions such as CloudBurst and BurstCoupon.
+A cross platform dynamic library to make developing applications and tools compatible with the Burstcoin blockchain easier. Providing secure access to the BRS functionality even on external nodes. Because the library signs transactions and encrypts messages locally. It also gives direct access to Burst Extensions such as CloudBurst and BurstCoupon.
 
 It is a bridge between the BRS (Burst Reference Software) REST API and a standard C interface. Making it ready to be called from a wide range of programming languages such as C, C++, C#, ruby, python, java, scala, php, lua, ect. The exported functions are listed in the BurstLib.h header.
 
@@ -38,7 +38,18 @@ You can build the library from the projects in the [Builds folder](https://githu
 - Linux make
 	- Open the LinuxMakeFile folder and execute `make CONFIG=Release` (have libcurl and boost++ installed)
 
+
 Repeat the same steps to build the [TestClient](https://github.com/CurbShifter/BurstLib/tree/master/TestClient/Builds "BurstLib/TestClient/Builds/") but no extra libraries or headers are needed. 
+
+---
+
+on Ubuntu all you would need is:   
+ 
+    sudo add-apt-repository ppa:the13thfloorelevators/burstcoinppa 
+    sudo apt-get update 
+    sudo apt-get install burstlib
+
+----
 
 Libraries used
 -
@@ -56,12 +67,10 @@ All sources and libraries except boost++ (and libcurl for linux) are included in
 
 Acknowledgments
 -
-[Andy Prock](https://github.com/aprock "BurstKit") and ["Daniel Jones"](https://github.com/nixops "nixops") and many thanks to [umbrellacorp03](https://github.com/umbrellacorp03) for the [The Burst API](https://burstwiki.org/wiki/The_Burst_API). Big shout out to whole Burstcoin community ! 
+[Andy Prock](https://github.com/aprock "BurstKit") and ["Daniel Jones"](https://github.com/nixops "nixops") and many thanks to [umbrellacorp03](https://github.com/umbrellacorp03) for the [The Burst API](https://burstwiki.org/wiki/The_Burst_API). And [RokyErickson](https://github.com/RokyErickson) for the Unbuntu packaging.
 
-
-Value for value
 -
-Please support the developers of the software you use 
+Please support the developers of the software you use. With value for value. 
 
 BURST-WN56-VW53-7B6V-9YAFW
 

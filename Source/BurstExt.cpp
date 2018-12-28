@@ -21,40 +21,76 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 BurstExt::BurstExt(String hostUrl) : BurstKit(hostUrl)
 {
-	threadpool = new ThreadPool();
+	threadpoolCloud = nullptr;
+}
+
+void BurstExt::ThreadpoolCloud()
+{
+	if (threadpoolCloud == nullptr)
+		threadpoolCloud = new ThreadPool();
 }
 
 BurstExt::~BurstExt()
 {
-	threadpool->removeAllJobs(true, 5000);
-	threadpool = nullptr;
+	if (threadpoolCloud)
+	{
+		threadpoolCloud->removeAllJobs(true, 5000);
+		threadpoolCloud = nullptr;
+	}
+}
+
+void BurstExt::SetNode(String hostUrl)
+{
+	if (hostUrl.endsWithChar('/'))
+		host = hostUrl;
+	else host = hostUrl + "/";
+	BurstKit::SetNode(hostUrl);
+}
+
+
+void BurstExt::SetSecretPhrase(String passphrase)
+{
+	BurstKit::SetSecretPhrase(passphrase);
+}
+
+String BurstExt::GetLastError(int &errorCode)
+{	
+	return BurstKit::GetLastError(errorCode);
+}
+
+void BurstExt::SetError(int errorCode, String msg)
+{	
+	BurstKit::SetError(errorCode, msg);
 }
 
 // CloudBurst --------------------------------------------------------------------------------------------------------------
 String BurstExt::CloudCancel()
 {
-	int n = threadpool->getNumJobs();
-	threadpool->removeAllJobs(true, 10000);
+	ThreadpoolCloud();
+	int n = threadpoolCloud->getNumJobs();
+	threadpoolCloud->removeAllJobs(true, 10000);
 	return String(n) + " jobs cancelled";
 }
 
 bool BurstExt::CloudDownloadStart(String cloudID, String dlFolder)
 {
+	ThreadpoolCloud();
 	BurstJob::downloadArgs args;
 	args.cloudID = cloudID;
 	args.dlFolder = dlFolder;
 	
 	BurstJob* newJob = new BurstJob(host, accountData.secretPhrase, args);
 	jobs.set(cloudID, newJob);
-	threadpool->addJob(newJob, false);
+	threadpoolCloud->addJob(newJob, false);
 
 	return newJob != nullptr;
 }
 
 bool BurstExt::CloudDownloadFinished(String cloudID, String &dlFilename, MemoryBlock &dlData, String &msg, uint64 &epochLast, float &progress)
 {
+	ThreadpoolCloud();
 	BurstExt::BurstJob *job = jobs[cloudID];
-	if (!threadpool->contains(job))
+	if (!threadpoolCloud->contains(job))
 	{
 		dlFilename = job->download.dlFilename;
 		dlData = job->download.dlData;
@@ -74,6 +110,7 @@ bool BurstExt::CloudDownloadFinished(String cloudID, String &dlFilename, MemoryB
 
 String BurstExt::CloudUploadStart(String message, File fileToUpload, uint64 deadline, uint64 stackSize, uint64 fee)
 {
+	ThreadpoolCloud();
 	BurstJob::uploadArgs args;
 	args.message = message;
 	args.fileToUpload = fileToUpload;
@@ -84,15 +121,16 @@ String BurstExt::CloudUploadStart(String message, File fileToUpload, uint64 dead
 	BurstJob* newJob = new BurstJob(host, accountData.secretPhrase, args, true);
 	String jobID = String((uint64)newJob);
 	jobs.set(jobID, newJob);
-	threadpool->addJob(newJob, false);
+	threadpoolCloud->addJob(newJob, false);
 
 	return (newJob != nullptr) ? jobID : String::empty;
 }
 
 bool BurstExt::CloudUploadFinished(String jobID, String &cloudID, uint64 &txFeePlancks, uint64 &feePlancks, uint64 &burnPlancks, uint64 &confirmTime, float &progress)
 {
+	ThreadpoolCloud();
 	BurstJob* job = jobs[jobID];
-	if (!threadpool->contains(job))
+	if (!threadpoolCloud->contains(job))
 	{
 		cloudID = job->upload.cloudID;
 		txFeePlancks = job->upload.txFeePlancks;
@@ -113,6 +151,7 @@ bool BurstExt::CloudUploadFinished(String jobID, String &cloudID, uint64 &txFeeP
 
 String BurstExt::CloudCalcCostsStart(String message, File fileToUpload, uint64 stackSize, uint64 fee)
 {
+	ThreadpoolCloud();
 	BurstJob::uploadArgs args;
 	args.message = message;
 	args.fileToUpload = fileToUpload;
@@ -122,15 +161,16 @@ String BurstExt::CloudCalcCostsStart(String message, File fileToUpload, uint64 s
 	BurstJob* newJob = new BurstJob(host, accountData.secretPhrase, args, false);
 	String jobID = String((uint64)newJob);
 	jobs.set(jobID, newJob);
-	threadpool->addJob(newJob, false);
+	threadpoolCloud->addJob(newJob, false);
 
 	return (newJob != nullptr) ? jobID : String::empty;
 }
 
 int64 BurstExt::CloudCalcCostsFinished(String jobID, uint64 &txFeePlancks, uint64 &feePlancks, uint64 &burnPlancks, uint64 &confirmTime, float &progress)
 {
+	ThreadpoolCloud();
 	BurstJob* job = jobs[jobID];
-	if (!threadpool->contains(job))
+	if (!threadpoolCloud->contains(job))
 	{
 		txFeePlancks = job->upload.txFeePlancks;
 		feePlancks = job->upload.feePlancks;
@@ -262,10 +302,10 @@ bool BurstExt::BurstJob::CloudDownload()
 		else if (step <= 1)
 			downloadOk = true;
 
-		if (timecodes[i].isNotEmpty() && download.epoch < 1407722400 + timecodes[i].getLargeIntValue())
+		if (timecodes[i].isNotEmpty() && download.epoch < BURSTCOIN_GENESIS_EPOCH + timecodes[i].getLargeIntValue())
 		{ // 2014-08-11 04:00:00 genesis epoch
 			uint64 tc = timecodes[i].getLargeIntValue();
-			download.epoch = 1407722400 + tc;
+			download.epoch = BURSTCOIN_GENESIS_EPOCH + tc;
 			download.msg += "[" + Time(download.epoch * 1000).toString(true, true) + "] ";
 		}
 		if (message.isNotEmpty())
@@ -418,7 +458,7 @@ bool BurstExt::BurstJob::ScrapeAccountTransactions(Array<MemoryBlock> &attachmen
 							{
 								bigInt.parseString(strv, 10);
 								MemoryBlock header = bigInt.toMemoryBlock();
-							///	header.ensureSize(sizeof(uint64), true);
+								header.ensureSize(sizeof(uint64), true);///
 
 								int length = 0;
 								unsigned int crc16 = 0;
@@ -619,7 +659,7 @@ MemoryBlock BurstExt::BurstJob::GetAttachmentData(StringArray recipientsArray, i
 }
 
 // CloudBurst UPLOAD --------------------------------------------------------------------------------------------------------------------------
-String BurstExt::BurstJob::CloudUpload()//String message, File fileToUpload, uint64 stackSize, uint64 fee, Array<StringArray> &allAddresses, uint64 deadline, int64 &addressesNum, uint64 &txFeePlancks, uint64 &feePlancks, uint64 &burnPlancks)
+String BurstExt::BurstJob::CloudUpload()
 {
 	Array<MTX> uploadedMTX;
 	unsigned int dropSize = 1;
@@ -632,7 +672,7 @@ String BurstExt::BurstJob::CloudUpload()//String message, File fileToUpload, uin
 	MemoryBlock fileData;
 	if (upload.fileToUpload.existsAsFile())
 	{
-		if (upload.fileToUpload.getSize() > 8 * 128 * 1020)
+		if (upload.fileToUpload.getSize() > 8 * 128 * MAX_FEE_SLOTS)
 			return "file is too large!";
 		filenameData.append(filename.toUTF8(), filename.length());
 		upload.fileToUpload.loadFileAsData(fileData);
@@ -651,7 +691,7 @@ String BurstExt::BurstJob::CloudUpload()//String message, File fileToUpload, uin
 	
 	String uploadFinishMsg;
 	// result is an array with multiple numerical addresses
-	int64 planks = CloudCalcCosts();// upload.message, upload.fileToUpload, upload.stackSize, upload.fee, upload.allAddresses, upload.addressesNum, upload.txFeePlancks, upload.feePlancks, upload.burnPlancks);
+	int64 planks = CloudCalcCosts();
 	bool fullFail = false;
 	if (planks < balanceNQT.getLargeIntValue())
 	{
@@ -676,7 +716,7 @@ String BurstExt::BurstJob::CloudUpload()//String message, File fileToUpload, uin
 						result = sendMoneyMulti(
 							upload.allAddresses[transactionNumber],
 							amountsNQT,
-							String(upload.fee + (735000 * (transactionNumber % upload.stackSize))),
+							String(upload.fee + (FEE_QUANT * (transactionNumber % upload.stackSize))),
 							String(upload.deadline));
 					}
 					else
@@ -684,26 +724,24 @@ String BurstExt::BurstJob::CloudUpload()//String message, File fileToUpload, uin
 						result = sendMoneyMultiSame(
 							upload.allAddresses[transactionNumber],
 							String(dropSize),
-							String(upload.fee + (735000 * (transactionNumber % upload.stackSize))),
+							String(upload.fee + (FEE_QUANT * (transactionNumber % upload.stackSize))),
 							String(upload.deadline));
 					}
 
 					String transactionID = GetJSONvalue(result, "transaction"); // the ID of the newly created transaction
 					if (transactionID.isEmpty())
-					{
-						//ToLog("FAILED " + String(failed) + " to send: " + (allAddresses[transactionNumber].joinIntoString(",")));
+					{ //ToLog("FAILED " + String(failed) + " to send: " + (allAddresses[transactionNumber].joinIntoString(",")));
 						failed++;
 						Time::waitForMillisecondCounter(Time::getApproximateMillisecondCounter() + 100);
 					}
 					else
-					{
-						//ToLog("send tx " + String(transactionNumber) + " id:" + transactionID);
+					{ //ToLog("send tx " + String(transactionNumber) + " id:" + transactionID);
 						// store a copy of the transaction
 						MTX mtx;
 						mtx.id = transactionID;
 						mtx.addresses = upload.allAddresses[transactionNumber];
 						mtx.amount = String(dropSize);
-						mtx.fee = String(upload.fee + (735000 * (transactionNumber % upload.stackSize)));
+						mtx.fee = String(upload.fee + (FEE_QUANT * (transactionNumber % upload.stackSize)));
 						mtx.dl = String(upload.deadline * 60);
 						uploadedMTX.add(mtx);
 
@@ -716,7 +754,6 @@ String BurstExt::BurstJob::CloudUpload()//String message, File fileToUpload, uin
 			}
 
 			transactionNumber++;
-//			ThreadWithProgressWindow::setProgress((1.f / allAddresses.size()) * transactionNumber);
 			Time::waitForMillisecondCounter(Time::getApproximateMillisecondCounter() + 100);
 		}
 
@@ -775,7 +812,7 @@ int64 BurstExt::BurstJob::CloudCalcCosts()//String message, File fileToUpload, u
 	for (int i = 0; i < upload.allAddresses.size(); i++)
 	{
 		upload.burnPlancks += dropSize * upload.allAddresses[i].size();
-		upload.txFeePlancks += (upload.fee + (735000 * (i % upload.stackSize)));
+		upload.txFeePlancks += (upload.fee + (FEE_QUANT * (i % upload.stackSize)));
 	}
 
 	upload.burnPlancks -= (upload.burnPlancks > 0 ? 1 : 0); // we added one for the fee address
@@ -1017,4 +1054,3 @@ String BurstExt::ValidateCoupon(String couponCode, String password, bool &valid)
 
 	return txDetail;
 }
-

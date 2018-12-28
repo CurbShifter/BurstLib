@@ -139,12 +139,12 @@ void testDecryptMessage(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &
 void makeCoupon(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib, const char *walletUrl,
 	const char *recipient,
 	const char *couponPassword,
-	const char *amountStr,
+	const char *, //amountStr,
 	const char *deadlineStr,
 	const char *feeStr,
 	const char *walletPassPhrase)
 {
-	long long amount = atoi(amountStr);
+	//long long amount = atoi(amountStr);
 	long long deadline = atoi(deadlineStr);
 	long long fee = atoi(feeStr);
 
@@ -161,6 +161,7 @@ void makeCoupon(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib
 		1,
 		fee,
 		deadline,
+		0, 0,
 		false))
 	{
 		char couponHEX[STR_SIZE];
@@ -378,7 +379,6 @@ int main(int argc, char* argv[])
 
 			/* hosts
 			 https://wallet1.burst-team.us:2083/
-			 https://wallet.burst.cryptoguru.org:8125/
 			 https://127.0.0.1:8125/
 			
 			download "https://wallet1.burst-team.us:2083/" CLOUD-2J7G-GATT-V3D7-BJE62 ""

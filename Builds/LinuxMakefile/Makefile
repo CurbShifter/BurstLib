@@ -38,7 +38,7 @@ ifeq ($(CONFIG),Debug)
   JUCE_CXXFLAGS += $(JUCE_CFLAGS) -std=c++11 $(CXXFLAGS)
   JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -shared $(shell pkg-config --libs libcurl) -ldl -lpthread -lrt  $(LDFLAGS)
 
-  TARGET := BurstLib.so
+  TARGET := libBurstLib.a
   BLDCMD = $(CXX) -o $(JUCE_OUTDIR)/$(TARGET) $(OBJECTS) $(JUCE_LDFLAGS) $(RESOURCES) $(TARGET_ARCH)
   CLEANCMD = rm -rf $(JUCE_OUTDIR)/$(TARGET) $(JUCE_OBJDIR)
 endif
@@ -58,7 +58,7 @@ ifeq ($(CONFIG),Release)
   JUCE_CXXFLAGS += $(JUCE_CFLAGS) -std=c++11 $(CXXFLAGS)
   JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) -shared -fvisibility=hidden $(shell pkg-config --libs libcurl) -ldl -lpthread -lrt  $(LDFLAGS)
 
-  TARGET := BurstLib.so
+  TARGET := libBurstLib.a
   BLDCMD = $(CXX) -o $(JUCE_OUTDIR)/$(TARGET) $(OBJECTS) $(JUCE_LDFLAGS) $(RESOURCES) $(TARGET_ARCH)
   CLEANCMD = rm -rf $(JUCE_OUTDIR)/$(TARGET) $(JUCE_OBJDIR)
 endif
@@ -66,6 +66,7 @@ endif
 OBJECTS := \
   $(JUCE_OBJDIR)/aes_729163ea.o \
   $(JUCE_OBJDIR)/blowfish_4ebc719.o \
+  $(JUCE_OBJDIR)/BurstAddress_fcb032e3.o \
   $(JUCE_OBJDIR)/Crytpo_e89dbc78.o \
   $(JUCE_OBJDIR)/curve25519_i64_2c20fa2.o \
   $(JUCE_OBJDIR)/sha256_236df836.o \
@@ -104,6 +105,11 @@ $(JUCE_OBJDIR)/aes_729163ea.o: ../../Source/crypto/aes.c
 $(JUCE_OBJDIR)/blowfish_4ebc719.o: ../../Source/crypto/blowfish.cpp
 	-@mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling blowfish.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/BurstAddress_fcb032e3.o: ../../Source/crypto/BurstAddress.cpp
+	-@mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling BurstAddress.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/Crytpo_e89dbc78.o: ../../Source/crypto/Crytpo.cpp

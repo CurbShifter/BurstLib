@@ -626,7 +626,7 @@ void core25519(k25519 Px, k25519 s, const k25519 k, const k25519 Gx) {
     
     /* reduce s mod q
      * (is this needed?  do it just in case, it's fast anyway) */
-    divmod((dstptr) t1, s, 32, order25519, 32);
+	divmod((dstptr)t1, s, 32, (dstptr)order25519, 32);
     
     /* take reciprocal of s mod q */
     cpy32((dstptr) t1, order25519);
@@ -663,7 +663,7 @@ int sign25519(k25519 v, const k25519 h, const priv25519 x, const spriv25519 s) {
   for (i = 0; i < 64; i++)
     tmp[i] = 0;
   mula32(tmp, v, s, 32, 1);
-  divmod(tmp+32, tmp, 64, order25519, 32);
+  divmod(tmp + 32, tmp, 64, (dstptr)order25519, 32);
   for (w = 0, i = 0; i < 32; i++)
     w |= v[i] = tmp[i];
   return w != 0;

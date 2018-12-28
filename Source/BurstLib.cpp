@@ -679,6 +679,7 @@ extern "C"
 			String(amountNQT),
 			String(feeNQT),
 			String(deadlineMinutes),
+			String(referencedTransactionFullHash, referencedTransactionFullHashBytes),
 			broadcast);
 
 		returnBytes = returnString.copyToUTF8(returnStr, returnBytes);
@@ -749,8 +750,9 @@ extern "C"
 			String(messageToEncryptToSelf, messageToEncryptToSelfBytes), 
 			String(messageToEncryptToSelfIsText, messageToEncryptToSelfIsTextBytes), 
 			String(encryptToSelfMessageData, encryptToSelfMessageDataBytes), 
-			String(encryptToSelfMessageNonce, encryptToSelfMessageNonceBytes), 
-			String(recipientPublicKey, recipientPublicKeyBytes), 
+			String(encryptToSelfMessageNonce, encryptToSelfMessageNonceBytes),
+			String(recipientPublicKey, recipientPublicKeyBytes),
+			String(referencedTransactionFullHash, referencedTransactionFullHashBytes),
 			String(feeNQT),
 			String(deadlineMinutes),
 			broadcast);

@@ -97,6 +97,11 @@
       <Option compile="0"/>
       <Option link="0"/>
     </Unit>
+    <Unit filename="../../Source/crypto/BurstAddress.cpp"/>
+    <Unit filename="../../Source/crypto/BurstAddress.h">
+      <Option compile="0"/>
+      <Option link="0"/>
+    </Unit>
     <Unit filename="../../Source/crypto/Crypto.hpp">
       <Option compile="0"/>
       <Option link="0"/>

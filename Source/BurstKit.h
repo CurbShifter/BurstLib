@@ -19,13 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define BurstKit_H_INCLUDED
 
 #include "./crypto/Crypto.hpp"
+#include "./crypto/BurstAddress.h"
 #include "../JuceLibraryCode/JuceHeader.h"
 
 using namespace juce;
 
-#define DE_TESTNET "https://wallet.dev.burst-test.net/"
-#define DE_NET "https://wallet.burst.cryptoguru.org:8125/"
 #define US_NET "https://wallet1.burst-team.us:2083/"
+
+#define FEE_QUANT 735000
 
 class BurstKit
 {
@@ -50,7 +51,7 @@ public:
 	String GetAccountID();
 	String GetJSONvalue(String json, String key);
 
-// API
+	// API
 	String broadcastTransaction( // Broadcast a transaction to the network. POST only.
 		String signedTransactionBytesStr); // is the bytecode of a signed transaction
 	String calculateFullHash(
@@ -63,6 +64,7 @@ public:
 		String decryptedMessageIsText, // is false if the decrypted message is a hex string, true if the decrypted message is text
 		String secretPhrase = String::empty); // is the secret passphrase of the recipient
 	String encryptTo( // Encrypt a message using AES without sending it.
+		String &nonce,
 		String recipient, // is the account ID of the recipient.
 		String messageToEncrypt, // is either UTF - 8 text or a string of hex digits to be compressed and converted into a 1000 byte maximum bytecode then encrypted using AES
 		String messageToEncryptIsText, // is false if the message to encrypt is a hex string, true if the encrypted message is text
@@ -80,7 +82,7 @@ public:
 		String firstIndex = String::empty, // is the zero - based index to the first block to retrieve (optional)
 		String lastIndex = String::empty, // is the zero - based index to the last block to retrieve (optional)
 		String includeTransactions = String::empty); // is the true to retrieve transaction details, otherwise only transaction IDs are retrieved (optional)
-		
+
 	String getAccountId( // Get an account ID given public key. (or a secret passphrase (POST only))
 		String pubKey_64HEX); // is the public key of the account
 	String getAccountTransactionIds( // Get the transaction IDs associated with an account in reverse block timestamp order. Note: Refer to Get Constants for definitions of types and subtypes
@@ -101,14 +103,14 @@ public:
 		String firstIndex = String::empty, // is the a zero - based index to the first transaction ID to retrieve(optional)
 		String lastIndex = String::empty, // is the a zero - based index to the last transaction ID to retrieve(optional)
 		String numberOfConfirmations = String::empty); // is the required number of confirmations per transaction(optional)
-		
+
 	String setAccountInfo( // Set account information. POST only. Refer to Create Transaction Request for common parameters. 
 		String name, // is the name to associate with the account
 		String description, // is the description to associate with the account
 		String feeNQT,
 		String deadlineMinutes,
 		bool broadcast = true);
-	
+
 	String getAlias( // Get information about a given alias. 
 		String alias, // is the alias ID (optional)
 		String aliasName = String::empty); // is the name of the alias (optional if alias provided)
@@ -142,10 +144,10 @@ public:
 
 	String getBalance( // Get the balance of an account. 
 		String account, // is the account ID
-		String includeEffectiveBalance, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT(optional
-		String height, // is the height to retrieve account balance for, if still available(optional)
-		String requireBlock, // is the block ID of a block that must be present in the blockchain during execution(optional)
-		String requireLastBlock); // is the block ID of a block that must be last in the blockchain during execution(optional)
+		String includeEffectiveBalance = String::empty, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT(optional
+		String height = String::empty, // is the height to retrieve account balance for, if still available(optional)
+		String requireBlock = String::empty, // is the block ID of a block that must be present in the blockchain during execution(optional)
+		String requireLastBlock = String::empty); // is the block ID of a block that must be last in the blockchain during execution(optional)
 	String getGuaranteedBalance( // Get the balance of an account that is confirmed at least a specified number of times. 
 		String account, // is the account ID
 		String numberOfConfirmations); // is the minimum number of confirmations for a transaction to be included in the guaranteed balance(optional, if omitted or zero then minimally confirmed transactions are included)
@@ -153,6 +155,8 @@ public:
 	String getTransaction( // Get a transaction object given a transaction ID. 
 		String transactionID, // a transaction ID. 
 		String fullHash = String::empty); //  is the full hash of the transaction (optional if transaction ID is provided)	
+	String getEscrowTransaction( // Get a transaction object given a transaction ID. 
+		String transactionID); // a transaction ID. 
 	String getUnconfirmedTransactionsIds( // Get a list of unconfirmed transaction IDs associated with an account. 
 		String account = String::empty); // is the account ID(optional)
 	String getUnconfirmedTransactions( // Get a list of unconfirmed transactions associated with an account. 
@@ -165,23 +169,32 @@ public:
 
 	String sendMoney( // Send individual amounts of BURST to up to 64 recipients. POST only. Refer to Create Transaction Request for common parameters. 
 		String recipient,
-		String amountNQT, 
-		String feeNQT, 
-		String deadlineMinutes, 
+		String amountNQT,
+		String feeNQT,
+		String deadlineMinutes,
+		String referencedTransactionFullHash,
+		bool broadcast = true);
+	String sendMoneyWithMessage(
+		String recipient,
+		String amountNQT,
+		String feeNQT,
+		String deadlineMinutes,
+		String message,
+		String referencedTransactionFullHash = String::empty,
 		bool broadcast = true);
 	String sendMoneyMulti( // Send the same amount of BURST to up to 128 recipients. POST only. Refer to Create Transaction Request for common parameters. 
 		StringArray recipients, // is the account ID of the recipients. The recipients string is <numid1>:<amount1>;<numid2>:<amount2>;<numidN>:<amountN>
-		StringArray amountsNQT, 
-		String feeNQT, 
-		String deadlineMinutes, 
+		StringArray amountsNQT,
+		String feeNQT,
+		String deadlineMinutes,
 		bool broadcast = true);
 	String sendMoneyMultiSame( // Send the same amount of BURST to up to 128 recipients. POST only. Refer to Create Transaction Request for common parameters. 
 		StringArray recipients, // is the account ID of the recipients. The recipients string is <numid1>;<numid2>;<numidN>
-		String amountNQT, 
-		String feeNQT, 
-		String deadlineMinutes, 
+		String amountNQT,
+		String feeNQT,
+		String deadlineMinutes,
 		bool broadcast = true);
-	
+
 	String readMessage( // Get a message given a transaction ID.
 		String transaction); // is the transaction ID of the message	
 	String sendMessage( // Create an Arbitrary Message transaction. POST only. Refer to Create Transaction Request for common parameters. 
@@ -199,6 +212,7 @@ public:
 		String encryptToSelfMessageData, // is already encrypted data which overrides messageToEncryptToSelf if provided (optional)
 		String encryptToSelfMessageNonce, // is a unique 32-byte number which cannot be reused (optional unless encryptToSelfMessageData is provided)
 		String recipientPublicKey, // is the public key of the receiving account (optional, enhances security of a new account)
+		String referencedTransactionFullHash, // optional referencedTransactionFullHash parameter which creates a chained transaction, meaning that the new transaction cannot be confirmed unless the referenced transaction is also confirmed. This feature allows a simple way of transaction escrow. 2 BURST for transactions that make use of referencedTransactionFullHash property when creating a new transaction.
 		String feeNQT,
 		String deadlineMinutes,
 		bool broadcast = true);
@@ -218,12 +232,12 @@ public:
 		String height, // is the block height(optional if block provided)
 		String timestamp, // is the timestamp(in seconds since the genesis block) of the block(optional if height provided)
 		String includeTransactions); // is true to include transaction details(optional)
-		
+
 	String getBlockId( // Get a block ID given a block height.
 		String height); // is the block height
-		
+
 	String getBlockchainStatus(); // Get the blockchain status. 
-		
+
 	String getBlocks( // Get blocks from the blockchain in reverse block height order.
 		String firstIndex, // is the first block to retrieve(optional, default is zero or the last block on the blockchain)
 		String lastIndex, // is the last block to retrieve(optional, default is firstIndex + 99)
@@ -231,7 +245,7 @@ public:
 	String getConstants(); // Get all defined constants. 
 	String getECBlock( // Get Economic Cluster block data.  Note: If timestamp is more than 15 seconds before the timestamp of the last block on the blockchain, errorCode 4 is returned.
 		String timestamp); // is the timestamp(in seconds since the genesis block) of the EC block(optional, default (or zero) is the current timestamp)
-	
+
 	String getMiningInfo(); // Get Mining Info
 	String getMyInfo(); // Get hostname and address of the requesting node. 
 	String getPeer( // Get information about a given peer. 
@@ -247,10 +261,13 @@ public:
 		String id); // is the numerical ID, in decimal form but equivalent to an 8-byte unsigned integer as produced by SHA-256 hashing
 	String rsConvert( // Get both the Reed-Solomon account address and the account number given an account ID. 
 		String account); // is the account ID (either RS address or number)
-	
+
 	std::string toBase64Encoding(unsigned char const* bytes_to_encode, unsigned int in_len);
 	std::string fromBase64Encoding(std::string const& encoded_string);
 	MemoryBlock fromBase64EncodingToMB(std::string const& encoded_string);
+
+	uint64 GetUINT64(const String uint64Str);
+	MemoryBlock GetUINT64MemoryBlock(const String uint64Str);
 
 	// cached account and host info
 	struct localAccountData
@@ -263,6 +280,11 @@ public:
 	localAccountData accountData;
 	String host;
 
+	int DetermineAccountUnit(String str);
+	String ensureAccountAlias(String str);
+	String ensureAccountRS(String str);
+	String ensureAccountID(String str);
+	String getAccountAliases(String str);
 private:
 	String CreateTX(
 		String url,
@@ -277,12 +299,11 @@ private:
 	String SignAndBroadcast(String unsignedTransactionBytesStr);
 	String Sign(String unsignedTransactionBytesStr);
 
-	var GetUrlJson(String urlStr);
+	var GetUrlJson(String urlStr, String *json = nullptr);
 	String GetUrlStr(String url);
 
 	StringArray toReedSolomonEncoding(MemoryBlock mb); // TODO implement like https://github.com/aprock/BurstKit/blob/master/BurstKit/Utils/BurstAddress.swift
 	MemoryBlock fromReedSolomonEncoding(StringArray encoded_strings);
-	String ensureReedSolomon(String str);
 
 	Crypto crypto;
 	const char *burstKitVersionString;
@@ -293,6 +314,9 @@ private:
 #endif
 
 /*
+To be implemented
+=
+
 cancelAskOrder
 cancelBidOrder
 createATProgram

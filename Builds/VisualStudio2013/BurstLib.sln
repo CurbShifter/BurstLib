@@ -5,9 +5,6 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BurstLib", "BurstLib.vcxproj", "{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestClient", "..\..\TestClient\Builds\VisualStudio2013\TestClient.vcxproj", "{0A1EA696-554B-D768-A4FF-E55844F78CA2}"
-	ProjectSection(ProjectDependencies) = postProject
-		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5} = {C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,12 +16,10 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Debug|Win32.ActiveCfg = Debug|Win32
 		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Debug|Win32.Build.0 = Debug|Win32
-		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Debug|x64.ActiveCfg = Debug|x64
-		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Debug|x64.Build.0 = Debug|x64
+		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Debug|x64.ActiveCfg = Debug|Win32
 		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Release|Win32.ActiveCfg = Release|Win32
 		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Release|Win32.Build.0 = Release|Win32
-		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Release|x64.ActiveCfg = Release|x64
-		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Release|x64.Build.0 = Release|x64
+		{C9CF53C6-D721-E356-35CB-E3F84F8CFFB5}.Release|x64.ActiveCfg = Release|Win32
 		{0A1EA696-554B-D768-A4FF-E55844F78CA2}.Debug|Win32.ActiveCfg = Debug|Win32
 		{0A1EA696-554B-D768-A4FF-E55844F78CA2}.Debug|Win32.Build.0 = Debug|Win32
 		{0A1EA696-554B-D768-A4FF-E55844F78CA2}.Debug|x64.ActiveCfg = Debug|x64
