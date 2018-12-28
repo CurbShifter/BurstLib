@@ -20,12 +20,6 @@ There are 3 layers to this lib;
 1. The BurstLib is the C wrapper to BurstExt.
 2. BurstExt includes the extensions CloudBurst and BurstCoupon. Which in itself is inherited from BurstKit
 3. BurstKit is the main bridge to the BRS API and includes the crypto + 3rd party libraries.
- 
-Todo
--
-- Include messaging system tagged to other transactions
-- Simplify message encryption
-- Include AT tx services Escrow/DSG/Assets
 
 Building
 -
