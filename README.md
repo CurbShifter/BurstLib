@@ -1,4 +1,4 @@
-![](https://github.com/CurbShifter/BurstLib/blob/master/Cext.png)
+![](https://github.com/CurbShifter/BurstLib/blob/master/CExt.png)
 
 # [CryptoExtensions](https://twitter.com/BurstExtensions) #
 
@@ -69,7 +69,7 @@ Acknowledgments
 -
 [Andy Prock](https://github.com/aprock "BurstKit") and ["Daniel Jones"](https://github.com/nixops "nixops") and many thanks to [umbrellacorp03](https://github.com/umbrellacorp03) for the [The Burst API](https://burstwiki.org/wiki/The_Burst_API). And [RokyErickson](https://github.com/RokyErickson) for the Unbuntu packaging.
 
--
+----
 Please support the developers of the software you use. With value for value. 
 
 BURST-WN56-VW53-7B6V-9YAFW
