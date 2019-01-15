@@ -663,7 +663,7 @@ String BurstExt::BurstJob::CloudUpload()
 {
 	Array<MTX> uploadedMTX;
 	unsigned int dropSize = 1;
-	String balanceNQT = GetJSONvalue(getBalance(GetAccountRS(), String::empty, String::empty, String::empty, String::empty), "balanceNQT");
+	String balanceNQT = GetJSONvalue(getBalance(GetAccountRS()), "balanceNQT");
 
 	// make memoryblock to save. message + file   MESSAGE\0FILENAME\0DATA
 	String filename = upload.fileToUpload.getFileName();

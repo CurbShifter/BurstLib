@@ -191,7 +191,8 @@ String BurstKit::GetJSONvalue(String json, String key)
 
 String BurstKit::GetUrlStr(String url)
 {
-	return URL(url).readEntireTextStream(true);
+	const String r =  URL(url).readEntireTextStream(true);
+	return r;
 }
 
 var BurstKit::GetUrlJson(String urlStr, String *json)
@@ -753,14 +754,14 @@ String BurstKit::sellAlias( // Sell an alias. POST only. Refer to Create Transac
 
 String BurstKit::getBalance( // Get the balance of an account. 
 	String account, // is the account ID / RS
-	String includeEffectiveBalance, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT (optional)
+//	String includeEffectiveBalance, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT (optional)
 	String height, // is the height to retrieve account balance for, if still available(optional)
 	String requireBlock, // is the block ID of a block that must be present in the blockchain during execution(optional)
 	String requireLastBlock) // is the block ID of a block that must be last in the blockchain during execution(optional)
 {
 	return GetUrlStr(host + "burst?requestType=getBalance" +
 		"&account=" + ensureAccountRS(account) +
-		(includeEffectiveBalance.isNotEmpty() ? "&includeEffectiveBalance=" + includeEffectiveBalance : "") +
+	//	(includeEffectiveBalance.isNotEmpty() ? "&includeEffectiveBalance=" + includeEffectiveBalance : "") +
 		(height.isNotEmpty() ? "&height=" + height : "") +
 		(requireBlock.isNotEmpty() ? "&requireBlock=" + requireBlock : "") +
 		(requireLastBlock.isNotEmpty() ? "&requireLastBlock=" + requireLastBlock : ""));
@@ -825,7 +826,7 @@ String BurstKit::sendMoney( // Send individual amounts of BURST to up to 64 reci
 	String referencedTransactionFullHash,
 	bool broadcast)
 {	// make the url and send the data
-	return sendMoneyWithMessage(recipient, amountNQT, feeNQT, deadlineMinutes, "", referencedTransactionFullHash, broadcast);
+	return sendMoneyWithMessage(recipient, amountNQT, feeNQT, deadlineMinutes, "", false, referencedTransactionFullHash, broadcast);
 }
 
 String BurstKit::sendMoneyWithMessage(
@@ -834,14 +835,38 @@ String BurstKit::sendMoneyWithMessage(
 	String feeNQT,
 	String deadlineMinutes,
 	String message,
+	bool encrpyted,
 	String referencedTransactionFullHash,
 	bool broadcast)
 {	// make the url and send the data
-	String url(host + "burst?requestType=sendMoney" +
-		"&recipient=" + ensureAccountRS(recipient) +
-		"&amountNQT=" + amountNQT +
-		(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
-		(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) + "&messageIsText=true" : ""));
+	String url;
+	if (encrpyted)
+	{
+		String encryptedMessageNonce;
+		String messageToEncryptIsText = ("true"); // is false if the message to encrypt is a hex string, true if the encrypted message is text
+
+		String encryptedMessageData = encryptTo( // Encrypt a message using AES without sending it.
+				encryptedMessageNonce,
+				recipient, // is the account ID of the recipient.
+				message, // is either UTF - 8 text or a string of hex digits to be compressed and converted into a 1000 byte maximum bytecode then encrypted using AES
+				messageToEncryptIsText); // is false if the message to encrypt is a hex string, true if the encrypted message is text
+
+		url = String(host + "burst?requestType=sendMoney" +
+			"&recipient=" + ensureAccountRS(recipient) +
+			"&amountNQT=" + amountNQT +
+			(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
+			(messageToEncryptIsText.isNotEmpty() ? "&messageIsText=" + messageToEncryptIsText : "") +
+			(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : "") +
+			(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : ""));
+	}
+	else
+	{
+		url = String(host + "burst?requestType=sendMoney" +
+			"&recipient=" + ensureAccountRS(recipient) +
+			"&amountNQT=" + amountNQT +
+			(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
+			(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) + "&messageIsText=true" : ""));
+	}
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
 }
 

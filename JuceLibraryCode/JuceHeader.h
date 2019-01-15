@@ -26,7 +26,7 @@
 #endif
 
 #if ! JUCE_DONT_DECLARE_PROJECTINFO
-namespace ProjectInfo
+namespace ProjectInfoLib
 {
     const char* const  projectName    = "BurstLib";
     const char* const  versionString  = "1.0.0";

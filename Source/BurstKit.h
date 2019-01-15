@@ -144,7 +144,7 @@ public:
 
 	String getBalance( // Get the balance of an account. 
 		String account, // is the account ID
-		String includeEffectiveBalance = String::empty, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT(optional
+	//	String includeEffectiveBalance = String::empty, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT(optional
 		String height = String::empty, // is the height to retrieve account balance for, if still available(optional)
 		String requireBlock = String::empty, // is the block ID of a block that must be present in the blockchain during execution(optional)
 		String requireLastBlock = String::empty); // is the block ID of a block that must be last in the blockchain during execution(optional)
@@ -180,6 +180,7 @@ public:
 		String feeNQT,
 		String deadlineMinutes,
 		String message,
+		bool encrpyted,
 		String referencedTransactionFullHash = String::empty,
 		bool broadcast = true);
 	String sendMoneyMulti( // Send the same amount of BURST to up to 128 recipients. POST only. Refer to Create Transaction Request for common parameters. 
@@ -229,9 +230,9 @@ public:
 
 	String getBlock( // Note: block overrides height which overrides timestamp.
 		String block, // is the block ID(optional)
-		String height, // is the block height(optional if block provided)
-		String timestamp, // is the timestamp(in seconds since the genesis block) of the block(optional if height provided)
-		String includeTransactions); // is true to include transaction details(optional)
+		String height = String::empty, // is the block height(optional if block provided)
+		String timestamp = String::empty, // is the timestamp(in seconds since the genesis block) of the block(optional if height provided)
+		String includeTransactions = String::empty); // is true to include transaction details(optional)
 
 	String getBlockId( // Get a block ID given a block height.
 		String height); // is the block height
