@@ -12,7 +12,7 @@ BLOWFISH::BLOWFISH(std::string hexKey)
 	if (hexKey.length() % 2 != 0)
 		throw 2;
 	byte *key = new byte[hexKey.length() / 2];
-	for (int i = 0; i < hexKey.length() / 2; i++)
+	for (unsigned int i = 0; i < hexKey.length() / 2; i++)
 	{
 		key[i] = hex2dec(hexKey[i * 2]) * 16 + hex2dec(hexKey[i * 2 + 1]);
 	}
@@ -21,7 +21,7 @@ BLOWFISH::BLOWFISH(std::string hexKey)
 	delete[] key;
 }
 
-int BLOWFISH::hex2dec(char hex)
+byte BLOWFISH::hex2dec(char hex)
 {
 	if ('a' <= hex && hex <= 'f')
 		return 10 + (hex - 'a');
@@ -59,7 +59,7 @@ byte* BLOWFISH::Decrypt_CBC(byte* data, int length, int* newlength)
 std::string BLOWFISH::Encrypt_CBC(std::string data)
 {
 	byte* binaryData = new byte[data.length()];
-	for (int i = 0; i < data.length(); i++)
+	for (unsigned int i = 0; i < data.length(); i++)
 		binaryData[i] = data[i];
 	int newlen = 0;
 	byte* result = Encrypt_CBC(binaryData, data.length(), &newlen);
@@ -74,7 +74,7 @@ std::string BLOWFISH::Encrypt_CBC(std::string data)
 std::string BLOWFISH::Encrypt_ECB(std::string data)
 {
 	byte* binaryData = new byte[data.length()];
-	for (int i = 0; i < data.length(); i++)
+	for (unsigned int i = 0; i < data.length(); i++)
 		binaryData[i] = data[i];
 	int newlen = 0;
 	byte* result = Encrypt_ECB(binaryData, data.length(), &newlen);
@@ -91,7 +91,7 @@ std::string BLOWFISH::Decrypt_CBC(std::string data)
 	if (data.length() % 2 != 0)
 		throw 2;
 	byte *binaryData = new byte[data.length() / 2];
-	for (int i = 0; i < data.length() / 2; i++)
+	for (unsigned int i = 0; i < data.length() / 2; i++)
 	{
 		binaryData[i] = hex2dec(data[i * 2]) * 16 + hex2dec(data[i * 2 + 1]);
 	}

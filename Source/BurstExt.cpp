@@ -302,7 +302,7 @@ bool BurstExt::BurstJob::CloudDownload()
 		else if (step <= 1)
 			downloadOk = true;
 
-		if (timecodes[i].isNotEmpty() && download.epoch < BURSTCOIN_GENESIS_EPOCH + timecodes[i].getLargeIntValue())
+		if (timecodes[i].isNotEmpty() && (int64)download.epoch < BURSTCOIN_GENESIS_EPOCH + timecodes[i].getLargeIntValue())
 		{ // 2014-08-11 04:00:00 genesis epoch
 			uint64 tc = timecodes[i].getLargeIntValue();
 			download.epoch = BURSTCOIN_GENESIS_EPOCH + tc;

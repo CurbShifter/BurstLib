@@ -39,16 +39,15 @@ private:
 	bool is_codeword_valid(const int *codeword);
 	uint64 GetUINT64(const String uint64Str);
 	MemoryBlock GetUINT64MemoryBlock(const String uint64Str);
-
-
+	
 	int initial_codeword_length;
 	int initial_codeword[17];
 	int gexp[4 * 8];
 	int glog[4 * 8];
 	int codeword_map[17];
 	String alphabet;
-	const int base_32_length;
-	const int base_10_length;
+	int base_32_length;
+	int base_10_length;
 };
 
 #endif //BurstAddress_H_INCLUDED

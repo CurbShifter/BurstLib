@@ -113,7 +113,7 @@ String BurstAddress::encode(String plain)
 		codeword_length += 1;
 	} while (length > 0);
 
-	int p_t[4] = { 24, 30, 30, 30 };
+	//int p_t[4] = { 24, 30, 30, 30 };
 	int p[4] = { 0, 0, 0, 0 };
 	for (int i = base_32_length - 1; i >= 0; i--)
 	{
@@ -201,7 +201,7 @@ int64 BurstAddress::decode(String cypher_string)
 			}
 		}
 		length = new_length;
-		char c = (digit_10 + (int)'0');
+		char c = (char)(digit_10 + (int)'0');
 		plain_string_builder = String((char*)&c, 1) + plain_string_builder;
 	} while (length > 0);
 

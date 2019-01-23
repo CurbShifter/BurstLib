@@ -125,7 +125,7 @@ class BLOWFISH{
         byte* Crypt_CBC(byte* data, int length, int* newlength, void (BLOWFISH::*CryptBlock)(byte*, int offset), bool decrypt);
         byte* padData(byte* data, int length, int* paddedLength, bool decrypt, bool IvSpace);
         int findPaddingEnd(byte* data, int length);
-        int hex2dec(char hex);
+        byte hex2dec(char hex);
         std::string byteToHex(unsigned char x);
 };
 
