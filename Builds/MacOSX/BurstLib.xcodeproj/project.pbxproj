@@ -10,6 +10,11 @@
 		90442BF7FDBAED4486E4C56C = {isa = PBXBuildFile; fileRef = 3BD8F81F21CFCC0FDED8C642; };
 		7712ADE950EBBEF7117C6D80 = {isa = PBXBuildFile; fileRef = 42E7FC86871DB44023B2C085; };
 		D4980518F2911BCD23D94E3E = {isa = PBXBuildFile; fileRef = 7CD106BC4B91D4BCF94A75C4; };
+		780B064BF975C36F95D09AEB = {isa = PBXBuildFile; fileRef = 32B5C048EB827DED4022CC88; };
+		E731245969E7271859C33ECA = {isa = PBXBuildFile; fileRef = 2DA09A3DC2B18D844C6AD3EB; };
+		F2AF59BBB7E85D2780EBE1E9 = {isa = PBXBuildFile; fileRef = A3232DD21BB4A9666D1D552D; };
+		44BAAD1BB61796DA16CA9AA6 = {isa = PBXBuildFile; fileRef = 881EAA4B64694E415F9CD620; };
+		935E8965014E94595C9B8E3F = {isa = PBXBuildFile; fileRef = F5767DEDAA76B739B2E52D33; };
 		FB991D9C553520E9C23B9C2E = {isa = PBXBuildFile; fileRef = 949D2EFECFF842BF9367E568; };
 		05796376CAF6D46FD4EC1975 = {isa = PBXBuildFile; fileRef = 5BCB37D4EFCF84716673992C; };
 		90220139F1ED5A8B53D6C6DC = {isa = PBXBuildFile; fileRef = D0A82B9A3B42535BCEA59AEA; };
@@ -27,6 +32,9 @@
 		1F61221636293DB09D6B13F9 = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BurstKit.cpp; path = ../../Source/BurstKit.cpp; sourceTree = "SOURCE_ROOT"; };
 		1FA9A145478B27525C480ECA = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = aes.hpp; path = ../../Source/crypto/aes.hpp; sourceTree = "SOURCE_ROOT"; };
 		2C89BA58AEBAE20241759CD9 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BurstAddress.h; path = ../../Source/crypto/BurstAddress.h; sourceTree = "SOURCE_ROOT"; };
+		2DA09A3DC2B18D844C6AD3EB = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "mshabal_256.c"; path = "../../Source/crypto/hash/mshabal_256.c"; sourceTree = "SOURCE_ROOT"; };
+		2F15745009648006930B6517 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = shabal.h; path = ../../Source/crypto/hash/shabal.h; sourceTree = "SOURCE_ROOT"; };
+		32B5C048EB827DED4022CC88 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "mshabal_128.c"; path = "../../Source/crypto/hash/mshabal_128.c"; sourceTree = "SOURCE_ROOT"; };
 		3BD8F81F21CFCC0FDED8C642 = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		3D274F444CBCDEA406611473 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = aes.h; path = ../../Source/crypto/aes.h; sourceTree = "SOURCE_ROOT"; };
 		42E7FC86871DB44023B2C085 = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
@@ -35,10 +43,14 @@
 		57A4E54C62EBBC197404B683 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = JuceHeader.h; path = ../../JuceLibraryCode/JuceHeader.h; sourceTree = "SOURCE_ROOT"; };
 		5BCB37D4EFCF84716673992C = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = blowfish.cpp; path = ../../Source/crypto/blowfish.cpp; sourceTree = "SOURCE_ROOT"; };
 		7CD106BC4B91D4BCF94A75C4 = {isa = PBXFileReference; lastKnownFileType = file.nib; name = RecentFilesMenuTemplate.nib; path = RecentFilesMenuTemplate.nib; sourceTree = "SOURCE_ROOT"; };
+		881EAA4B64694E415F9CD620 = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = shabal.cpp; path = ../../Source/crypto/hash/shabal.cpp; sourceTree = "SOURCE_ROOT"; };
 		885DF0AC09E7B5FEF3643DCC = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Crytpo.cpp; path = ../../Source/crypto/Crytpo.cpp; sourceTree = "SOURCE_ROOT"; };
 		8FDCF2B320BDD7ED462E423E = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "curve25519_i64.c"; path = "../../Source/crypto/curve25519_i64.c"; sourceTree = "SOURCE_ROOT"; };
 		949D2EFECFF842BF9367E568 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = aes.c; path = ../../Source/crypto/aes.c; sourceTree = "SOURCE_ROOT"; };
+		95929A0F2725644519174A73 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = mshabal.h; path = ../../Source/crypto/hash/mshabal.h; sourceTree = "SOURCE_ROOT"; };
+		A3232DD21BB4A9666D1D552D = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "mshabal_512.c"; path = "../../Source/crypto/hash/mshabal_512.c"; sourceTree = "SOURCE_ROOT"; };
 		AF1C174854807389E41A74E6 = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BurstExt.cpp; path = ../../Source/BurstExt.cpp; sourceTree = "SOURCE_ROOT"; };
+		B512B47264977551783FD5FB = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "sph_shabal.h"; path = "../../Source/crypto/hash/sph_shabal.h"; sourceTree = "SOURCE_ROOT"; };
 		C00C08073EC14A2A30E85C71 = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = sha256.cpp; path = ../../Source/crypto/sha256.cpp; sourceTree = "SOURCE_ROOT"; };
 		CAC4CE45102044E8025395DD = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AppConfig.h; path = ../../JuceLibraryCode/AppConfig.h; sourceTree = "SOURCE_ROOT"; };
 		CB8582C6AC7174429B8926CD = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BurstKit.h; path = ../../Source/BurstKit.h; sourceTree = "SOURCE_ROOT"; };
@@ -48,7 +60,18 @@
 		D504B0151970D619E46009DA = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BurstLib.cpp; path = ../../Source/BurstLib.cpp; sourceTree = "SOURCE_ROOT"; };
 		EAF70B51EEC89CDD9F976D33 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BurstLib.h; path = ../../Source/BurstLib.h; sourceTree = "SOURCE_ROOT"; };
 		ED66DEFCC4B319303DA8DEB8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "curve25519_i64.h"; path = "../../Source/crypto/curve25519_i64.h"; sourceTree = "SOURCE_ROOT"; };
+		F5767DEDAA76B739B2E52D33 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "sph_shabal.c"; path = "../../Source/crypto/hash/sph_shabal.c"; sourceTree = "SOURCE_ROOT"; };
+		AAFC4C1988098A0A20FC6F9F = {isa = PBXGroup; children = (
+					95929A0F2725644519174A73,
+					32B5C048EB827DED4022CC88,
+					2DA09A3DC2B18D844C6AD3EB,
+					A3232DD21BB4A9666D1D552D,
+					881EAA4B64694E415F9CD620,
+					2F15745009648006930B6517,
+					F5767DEDAA76B739B2E52D33,
+					B512B47264977551783FD5FB, ); name = hash; sourceTree = "<group>"; };
 		BE30BE8C312BC3ADA7F42FA3 = {isa = PBXGroup; children = (
+					AAFC4C1988098A0A20FC6F9F,
 					949D2EFECFF842BF9367E568,
 					3D274F444CBCDEA406611473,
 					1FA9A145478B27525C480ECA,
@@ -175,6 +198,11 @@
 		556C085BBB30C5D1097C5B90 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
 					D4980518F2911BCD23D94E3E, ); runOnlyForDeploymentPostprocessing = 0; };
 		F38B9FF5BCC84978873BED6A = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+					780B064BF975C36F95D09AEB,
+					E731245969E7271859C33ECA,
+					F2AF59BBB7E85D2780EBE1E9,
+					44BAAD1BB61796DA16CA9AA6,
+					935E8965014E94595C9B8E3F,
 					FB991D9C553520E9C23B9C2E,
 					05796376CAF6D46FD4EC1975,
 					90220139F1ED5A8B53D6C6DC,

@@ -70,7 +70,7 @@ typedef unsigned long long burstlibPtr;
 #define Args_broadcastTransaction (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *signedTransactionBytesStr, const int signedTransactionBytesStrBytes)
 #define Args_calculateFullHash (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *unsignedTransactionBytesStr, const int unsignedTransactionBytesStrBytes, const char *signatureHash, const int signatureHashBytes)
 #define Args_decryptFrom (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *accountStr, const int accountBytes, const char *dataStr, int dataBytes, const char *nonceStr, const int nonceBytes, const char *decryptedMessageIsTextStr, const int decryptedMessageIsTextBytes, const char *secretPhraseStr, const int secretPhraseBytes)
-#define Args_encryptTo (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *recipientStr, const int recipientBytes, const char *messageToEncryptStr, const int messageToEncryptBytes, const char *messageToEncryptIsTextStr, const int messageToEncryptIsTextBytes, const char *secretPhraseStr, const int secretPhraseBytes)
+#define Args_encryptTo (const burstlibPtr handle, char *returnStr, int &returnBytes, char *nonceStr, int &nonceBytes, const char *recipientStr, const int recipientBytes, const char *messageToEncryptStr, const int messageToEncryptBytes, const char *messageToEncryptIsTextStr, const int messageToEncryptIsTextBytes, const char *secretPhraseStr, const int secretPhraseBytes)
 #define Args_getAccount (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account_RS_or_IDStr, const int account_RS_or_IDBytes)
 #define Args_getAccountBlockIds (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *accountStr, const int accountBytes, const char *timestampStr, const int timestampBytes, const char *firstIndexStr, const int firstBytes, const char *lastIndexStr, const int lastBytes)
 #define Args_getAccountBlocks (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *accountStr, const int accountBytes, const char *timestampStr, const int timestampBytes, const char *firstIndexStr, const int firstBytes, const char *lastIndexStr, const int lastBytes, const char *includeTransactions, const int includeTransactionsBytes)
@@ -114,6 +114,10 @@ typedef unsigned long long burstlibPtr;
 #define Args_longConvert (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *id, const int idBytes)
 #define Args_rsConvert (const burstlibPtr handle, char *returnStr, int &returnBytes, const char *account, const int accountBytes)
 
+#define Args_Shabal256_ccID (const burstlibPtr handle)
+#define Args_Shabal256_reset (const burstlibPtr handle, unsigned int ccID)
+#define Args_Shabal256_update (const burstlibPtr handle, unsigned int ccID, void *inbuf, int offset, int len)
+#define Args_Shabal256_digest (const burstlibPtr handle, unsigned int ccID, void *dst_32bytes)
 
 // IMPORT EXPORT =======================================================================================
 #if defined(IMPORT_LIB) || defined(EXPORT_LIB)
@@ -190,6 +194,11 @@ PREFIX_PORT bool SHOW BurstLib_getState Args_getState;
 PREFIX_PORT bool SHOW BurstLib_longConvert Args_longConvert;
 PREFIX_PORT bool SHOW BurstLib_rsConvert Args_rsConvert;
 
+PREFIX_PORT unsigned int SHOW BurstLib_Shabal256_ccID Args_Shabal256_ccID;
+PREFIX_PORT bool SHOW BurstLib_Shabal256_reset Args_Shabal256_reset;
+PREFIX_PORT bool SHOW BurstLib_Shabal256_update Args_Shabal256_update;
+PREFIX_PORT bool SHOW BurstLib_Shabal256_digest Args_Shabal256_digest;
+
 #else
 // Typedefs =============================================================================================
 typedef burstlibPtr(*BurstLib_GetHandle_Ptr) Args_GetHandle;
@@ -263,6 +272,11 @@ typedef bool(*BurstLib_getTime_Ptr) Args_getTime;
 typedef bool(*BurstLib_getState_Ptr) Args_getState;
 typedef bool(*BurstLib_longConvert_Ptr) Args_longConvert;
 typedef bool(*BurstLib_rsConvert_Ptr) Args_rsConvert;
+
+typedef unsigned int(*BurstLib_Shabal256_ccID_Ptr) Args_Shabal256_ccID;
+typedef bool(*BurstLib_Shabal256_reset_Ptr) Args_Shabal256_reset;
+typedef bool(*BurstLib_Shabal256_update_Ptr) Args_Shabal256_update;
+typedef bool(*BurstLib_Shabal256_digest_Ptr) Args_Shabal256_digest;
 
 // Struct to hold the function pointers =================================================================
 struct BurstLib_FunctionHandles
@@ -338,6 +352,11 @@ struct BurstLib_FunctionHandles
 	BurstLib_getState_Ptr getState;
 	BurstLib_longConvert_Ptr longConvert;
 	BurstLib_rsConvert_Ptr rsConvert;
+
+	BurstLib_Shabal256_ccID_Ptr Shabal256_ccID;
+	BurstLib_Shabal256_reset_Ptr Shabal256_reset;
+	BurstLib_Shabal256_update_Ptr Shabal256_update;
+	BurstLib_Shabal256_digest_Ptr Shabal256_digest;
 };
 
 #endif // IMPORT EXPORT

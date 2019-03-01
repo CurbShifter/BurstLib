@@ -47,10 +47,9 @@ void BurstExt::SetNode(String hostUrl)
 	BurstKit::SetNode(hostUrl);
 }
 
-
-void BurstExt::SetSecretPhrase(String passphrase)
+void BurstExt::SetSecretPhrase(const String passphrase, const unsigned int index)
 {
-	BurstKit::SetSecretPhrase(passphrase);
+	BurstKit::SetSecretPhrase(passphrase, index);
 }
 
 String BurstExt::GetLastError(int &errorCode)
@@ -79,7 +78,7 @@ bool BurstExt::CloudDownloadStart(String cloudID, String dlFolder)
 	args.cloudID = cloudID;
 	args.dlFolder = dlFolder;
 	
-	BurstJob* newJob = new BurstJob(host, accountData.secretPhrase, args);
+	BurstJob* newJob = new BurstJob(host, GetSecretPhraseString(), args);
 	jobs.set(cloudID, newJob);
 	threadpoolCloud->addJob(newJob, false);
 
@@ -118,7 +117,7 @@ String BurstExt::CloudUploadStart(String message, File fileToUpload, uint64 dead
 	args.stackSize = stackSize;
 	args.fee = fee;
 
-	BurstJob* newJob = new BurstJob(host, accountData.secretPhrase, args, true);
+	BurstJob* newJob = new BurstJob(host, GetSecretPhraseString(), args, true);
 	String jobID = String((uint64)newJob);
 	jobs.set(jobID, newJob);
 	threadpoolCloud->addJob(newJob, false);
@@ -158,7 +157,7 @@ String BurstExt::CloudCalcCostsStart(String message, File fileToUpload, uint64 s
 	args.stackSize = stackSize;
 	args.fee = fee;
 
-	BurstJob* newJob = new BurstJob(host, accountData.secretPhrase, args, false);
+	BurstJob* newJob = new BurstJob(host, GetSecretPhraseString(), args, false);
 	String jobID = String((uint64)newJob);
 	jobs.set(jobID, newJob);
 	threadpoolCloud->addJob(newJob, false);
@@ -190,7 +189,7 @@ int64 BurstExt::CloudCalcCostsFinished(String jobID, uint64 &txFeePlancks, uint6
 
 // BurstJob ----------------------------------------------------------------------------------------------------------------
 BurstExt::BurstJob::BurstJob(String hostUrl, String passPhrase, downloadArgs &download) 
-	: BurstKit(hostUrl, passPhrase), ThreadPoolJob("BurstJob"), hostUrl(hostUrl), passPhrase(passPhrase), progressFlt(0.f)
+	: BurstKit(hostUrl, passPhrase), ThreadPoolJob("BurstJob"), hostUrl(hostUrl), /*passPhrase(passPhrase),*/ progressFlt(0.f)
 {
 	upload.stackSize = 0;
 	upload.fee = 0;
@@ -207,7 +206,7 @@ BurstExt::BurstJob::BurstJob(String hostUrl, String passPhrase, downloadArgs &do
 }
 
 BurstExt::BurstJob::BurstJob(String hostUrl, String passPhrase, uploadArgs &upload, const bool broadcast) 
-	: BurstKit(hostUrl, passPhrase), ThreadPoolJob("BurstJob"), hostUrl(hostUrl), passPhrase(passPhrase), progressFlt(0.f)
+	: BurstKit(hostUrl, passPhrase), ThreadPoolJob("BurstJob"), hostUrl(hostUrl), /*passPhrase(passPhrase),*/ progressFlt(0.f)
 {
 	upload.txFeePlancks = 0;
 	upload.feePlancks = 0;
@@ -959,16 +958,25 @@ String BurstExt::CreateCoupon(String txSignedHex, String password)
 
 	int retry = 5;
 	String base64coupon;
-	while (txSignedHex.isNotEmpty() && base64coupon.isEmpty() && --retry > 0)
+	while (txSignedHex.length() >= (176 * 2) && base64coupon.isEmpty() && --retry > 0)
 	{
-		int length = txSignedHex.getNumBytesAsUTF8();
-		byte* data = new byte[length];
-		memcpy(data, txSignedHex.toRawUTF8(), length);
+		MemoryBlock txSigned;
+		txSigned.loadFromHexString(txSignedHex);
+				
+		int length = 64;
+		int newlength = 0; // 80
+		byte *encBytes = bf.Encrypt_CBC(&((byte *)txSigned.getData())[96], length, &newlength);// only encrypt the 64 signature bytes. 96 to 160
 
-		int newlength = 0;
-		byte *encBytes = bf.Encrypt_CBC(data, length, &newlength);
+		// cut out signature
+		MemoryBlock txSignedEncrypted(&((char *)txSigned.getData())[0], 96); // pre sign
+		txSignedEncrypted.append(&((char *)txSigned.getData())[160], txSigned.getSize() - 160); // post sign
+		// add encrypted signature at back
+		txSignedEncrypted.append(encBytes, newlength);
 
-		base64coupon = toBase64Encoding(encBytes, newlength);
+		base64coupon = toBase64Encoding(txSignedEncrypted);
+
+	//	bool plainTestInvalid = true; // should fail
+	//	String plainTest = ValidateCoupon(base64coupon, "WRONG_PASSWORD", plainTestInvalid);
 
 		bool valid = false;
 		String details = ValidateCoupon(base64coupon, password, valid);
@@ -983,74 +991,56 @@ String BurstExt::CreateCoupon(String txSignedHex, String password)
 
 String BurstExt::RedeemCoupon(String couponCode, String password)
 {
-	String transactionID;
-
-	MemoryBlock	pwBin(password.toRawUTF8(), password.getNumBytesAsUTF8());
-	String shaPwHex = SHA256(pwBin).toHexString().removeCharacters(" ");
-	BLOWFISH bf(shaPwHex.toStdString());
-
-	MemoryBlock	couponCodeBin = fromBase64EncodingToMB(couponCode.toStdString());
-	int length = couponCodeBin.getSize();
-	byte* data = new byte[length];
-	memcpy(data, couponCodeBin.getData(), length);
-
-	int newlength = 0;
-	byte *decBytes = bf.Decrypt_CBC(data, length, &newlength);
-
-	bool invalidChar = false;
-	for (int i = 0; i < newlength && !invalidChar; i++)
+	String txHex = DecryptCoupon(couponCode, password);
+	if (txHex.length() >= 176 * 2 && txHex.containsOnly("ABCDEFabcdef0123456789"))
 	{
-		invalidChar = invalidChar ? true : decBytes[i] < 48 || (decBytes[i] > 57 && decBytes[i] < 65) || (decBytes[i] > 70 && decBytes[i] < 97) || decBytes[i] > 102;
+		var result = broadcastTransaction(txHex);
+		String transactionID = result["transaction"];
+		return transactionID;
 	}
-	if (!invalidChar)
-	{
-		String coupondataDecypted((const char*)decBytes, newlength);
-		//var result = broadcastTransaction(String::toHexString(coupondataDecypted.getData(), coupondataDecypted.getSize()).removeCharacters(" "));
-		var result = broadcastTransaction(coupondataDecypted);
-		transactionID = result["transaction"];
-	}
-
-	delete[] data;
-	delete[] decBytes;
-
-	return transactionID;
+	return String::empty;
 }
 
 String BurstExt::ValidateCoupon(String couponCode, String password, bool &valid)
 {
+	String txHex = DecryptCoupon(couponCode, password);
+	if (txHex.length() >= 176 * 2 && txHex.containsOnly("ABCDEFabcdef0123456789"))
+	{
+		String txDetail = parseTransaction(txHex, "");
+		String verify = GetJSONvalue(txDetail, "verify");
+		valid = verify.getIntValue() > 0 || verify.compareIgnoreCase("true") == 0;
+		return txDetail;
+	}
+	return String::empty;
+}
+
+String BurstExt::DecryptCoupon(String couponCode, String password)
+{
+	String txHex;
 	MemoryBlock	pwBin(password.toRawUTF8(), password.getNumBytesAsUTF8());
 	String shaPwHex = SHA256(pwBin).toHexString().removeCharacters(" ");
 	BLOWFISH bf(shaPwHex.toStdString());
 
-	MemoryBlock	couponCodeBin = fromBase64EncodingToMB(couponCode.toStdString());
-	int length = couponCodeBin.getSize();
-	byte* data = new byte[length];
-	memcpy(data, couponCodeBin.getData(), length);
-
-	int newlength = 0;
-	byte *decBytes = bf.Decrypt_CBC(data, length, &newlength);
-
-	valid = false;
-	bool invalidChar = false;
-	for (int i = 0; i < newlength && !invalidChar; i++)
-	{ // check the data before we try to make a valid string. only expecting ascii hex-chars
-		invalidChar = invalidChar ? true : decBytes[i] < 48 || (decBytes[i] > 57 && decBytes[i] < 65) || (decBytes[i] > 70 && decBytes[i] < 97) || decBytes[i] > 102;
-	}
-	String txDetail;
-	if (!invalidChar)
+	MemoryBlock	couponCodeBin = fromBase64Encoding(couponCode.toStdString());
+	MemoryBlock	txBin(couponCodeBin.getData(), couponCodeBin.getSize() - 80);
+	if (couponCodeBin.getSize() >= 176)
 	{
-		String coupondataDecypted((const char*)decBytes, newlength);
-		
-		if (coupondataDecypted.isNotEmpty() && coupondataDecypted.containsOnly("ABCDEFabcdef0123456789"))
+		int length = 80;// couponCodeBin.getSize() - (176 - 64);
+		int newlength = 0;
+		byte *decBytes = bf.Decrypt_CBC(&((byte *)couponCodeBin.getData())[couponCodeBin.getSize() - 80], length, &newlength);
+
+		if (newlength >= 64) // size of signature
 		{
-			txDetail = parseTransaction(coupondataDecypted, "");
-			String verify = GetJSONvalue(txDetail, "verify");
-			valid = verify.getIntValue() > 0 || verify.compareIgnoreCase("true") == 0;
+			txBin.insert(decBytes, 64, 96); // insert decrypted signature
+			txHex = String::toHexString(txBin.getData(), txBin.getSize(), 0);
 		}
+		else
+		{ // for data validation w/o sign
+			MemoryBlock emptySign(64, true);
+			txBin.insert(emptySign.getData(), 64, 96);
+			txHex = String::toHexString(txBin.getData(), txBin.getSize(), 0);
+		}
+		delete[] decBytes;
 	}
-
-	delete[] data;
-	delete[] decBytes;
-
-	return txDetail;
+	return txHex;
 }

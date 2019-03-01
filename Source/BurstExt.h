@@ -82,7 +82,7 @@ public:
 	~BurstExt();
 
 	void SetNode(String hostUrl);
-	void SetSecretPhrase(String passphrase);
+	void SetSecretPhrase(const String passphrase, const unsigned int index);
 
 	String GetLastError(int &errorCode);
 	void SetError(int errorCode, String msg);
@@ -104,6 +104,7 @@ public:
 	String CreateCoupon(String txSignedHex, String password);
 	String RedeemCoupon(String couponHex, String password);
 	String ValidateCoupon(String couponCode, String password, bool &valid);
+	String DecryptCoupon(String couponHex, String password);
 	
 	class BurstJob : public ThreadPoolJob, public BurstKit
 	{
@@ -171,7 +172,6 @@ public:
 		bool broadcast;
 		float progressFlt;
 		String hostUrl;
-		String passPhrase;
 		CriticalSection progressLock;
 		CriticalSection runLock;
 	};

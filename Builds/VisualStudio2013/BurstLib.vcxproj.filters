@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="BurstLib">
@@ -13,6 +12,12 @@
     </Filter>
     <Filter Include="Juce Library Code">
       <UniqueIdentifier>{8B4D1BAA-6DB4-CAEC-A0FA-271F354D5C61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BurstLib\Source\crypto\hash">
+      <UniqueIdentifier>{8787323d-beec-4b84-96da-43b004db6244}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BurstLib\Source\crypto\scavenge">
+      <UniqueIdentifier>{16b7306a-bae2-462b-a3ab-08a06e4e0351}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +53,63 @@
     </ClCompile>
     <ClCompile Include="..\..\JuceLibraryCode\juce_cryptography.cpp">
       <Filter>Juce Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\hash\mshabal_128.c">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\hash\mshabal_256.c">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\hash\mshabal_512.c">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\hash\shabal.cpp">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\hash\simd_shabal.c">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\hash\sph_shabal.c">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\common.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\mshabal_128_avx.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\mshabal_128_neon.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\mshabal_128_sse2.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\mshabal_256_avx2.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\mshabal_512_avx512f.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\shabal.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\shabal_avx.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\shabal_avx2.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\shabal_avx512f.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\shabal_neon.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\shabal_sse2.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\crypto\scavenged\sph_shabal.c">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -86,6 +148,66 @@
     </ClInclude>
     <ClInclude Include="..\..\JuceLibraryCode\JuceHeader.h">
       <Filter>Juce Library Code</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\hash\mshabal.h">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\hash\shabal.h">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\hash\sph_shabal.h">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\hash\sph_types.h">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\hash\simd_shabal.h">
+      <Filter>BurstLib\Source\crypto\hash</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\common.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\mshabal_128_avx.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\mshabal_128_neon.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\mshabal_128_sse2.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\mshabal_256_avx2.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\mshabal_512_avx512f.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\shabal.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\shabal_avx.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\shabal_avx2.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\shabal_avx512f.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\shabal_neon.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\shabal_sse2.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\sph_shabal.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\sph_types.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\crypto\scavenged\SSE2NEON.h">
+      <Filter>BurstLib\Source\crypto\scavenge</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -5,7 +5,7 @@
 # BurstLib
 A cross platform dynamic library to make developing applications and tools compatible with the Burstcoin blockchain easier. Providing secure access to the BRS functionality even on external nodes. Because the library signs transactions and encrypts messages locally. It also gives direct access to Burst Extensions such as CloudBurst and BurstCoupon.
 
-It is a bridge between the BRS (Burst Reference Software) REST API and a standard C interface. Making it ready to be called from a wide range of programming languages such as C, C++, C#, ruby, python, java, scala, php, lua, ect. The exported functions are listed in the BurstLib.h header.
+It is a bridge between the BRS (Burst Reference Software) RPC API and a standard C interface. Making it ready to be called from a wide range of programming languages such as C, C++, C#, ruby, python, java, scala, php, lua, ect. The exported functions are listed in the BurstLib.h header.
 
 Use it
 -

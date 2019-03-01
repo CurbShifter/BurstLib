@@ -133,6 +133,9 @@ MemoryBlock Crypto::getSharedSecret(MemoryBlock myPrivateKey, MemoryBlock theirP
 
 MemoryBlock Crypto::aesEncrypt(MemoryBlock plainText, MemoryBlock myPrivateKey, MemoryBlock theirPublicKey, MemoryBlock &nonce)
 {
+	if (plainText.getSize() <= 0)
+		return MemoryBlock();
+
 	nonce.ensureSize(ECCKeyLength, true);
 	juce::Random random;
 	random.fillBitsRandomly(nonce.getData(), ECCKeyLength);
@@ -168,6 +171,9 @@ MemoryBlock Crypto::aesEncrypt(MemoryBlock plainText, MemoryBlock myPrivateKey, 
 
 MemoryBlock Crypto::aesDecrypt(MemoryBlock ivCiphertext, MemoryBlock myPrivateKey, MemoryBlock theirPublicKey, MemoryBlock nonce)
 {
+	if (ivCiphertext.getSize() <= 0)
+		return MemoryBlock();
+
 	const int ivSize = IV_SIZE;
 	MemoryBlock iv(ivCiphertext.getData(), ivSize);
 	ivCiphertext.removeSection(0, ivSize);

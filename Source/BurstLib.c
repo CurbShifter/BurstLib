@@ -171,6 +171,13 @@ void* InitFunctions(const char *libPath, BurstLib_FunctionHandles *burstLib)
 	burstLib->longConvert = (BurstLib_longConvert_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_longConvert");
 	burstLib->rsConvert = (BurstLib_rsConvert_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_rsConvert");
 
+#if BURSTKIT_SHABAL == 1
+	burstLib->Shabal256_ccID = (BurstLib_Shabal256_ccID_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_Shabal256_ccID");
+	burstLib->Shabal256_reset = (BurstLib_Shabal256_reset_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_Shabal256_reset");
+	burstLib->Shabal256_update = (BurstLib_Shabal256_update_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_Shabal256_update");
+	burstLib->Shabal256_digest = (BurstLib_Shabal256_digest_Ptr)GETHANDLE_FUNC(lib_handle, "BurstLib_Shabal256_digest");
+#endif // BURSTKIT_SHABAL
+
 	return lib_handle;
 };
 

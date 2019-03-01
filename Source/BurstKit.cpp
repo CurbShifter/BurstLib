@@ -17,13 +17,54 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "BurstKit.h"
 #include "Version.h"
+#include <bitset>
 
 using namespace juce;
 
 BurstKit::BurstKit(String hostUrl, String passPhrase) : host(hostUrl), burstKitVersionString(SVNRevision)
 {
 	if (passPhrase.isNotEmpty())
-		SetSecretPhrase(passPhrase);
+	{
+		SetSecretPhrase(passPhrase, 0);
+	}
+#if BURSTKIT_SHABAL == 1
+	simd_shabal256_init(&ccInitSIMD);
+	sph_shabal256_init(&ccInit);
+
+	int cpuInformation[4];
+	__cpuid(cpuInformation, 0);
+
+	int nIds = cpuInformation[0];
+
+	if (nIds<1){
+		// possible old cpu
+		return;
+	}
+
+	int cpuInformationEx[4];
+	__cpuidex(cpuInformationEx, 1, 0);
+
+	std::bitset<32> Ecx = cpuInformationEx[2];
+	std::bitset<32> Edx = cpuInformationEx[3];
+
+	m_supportSSE = Edx[25];
+	m_supportSSE2 = Edx[26];
+	m_supportAVX = Ecx[28];
+
+	if (nIds>6){
+		__cpuidex(cpuInformationEx, 7, 0);
+		std::bitset<32> Ebx = cpuInformationEx[1];
+		m_supportAVX2 = Ebx[5];
+	}
+
+	//m_supportAVX = m_supportAVX2 = false;
+#endif
+	memKey[0].setSize(32);
+	memKey[1].setSize(32);
+
+	Random random;
+	random.fillBitsRandomly(memKey[0].getData(), 32);
+	random.fillBitsRandomly(memKey[1].getData(), 32);
 }
 
 BurstKit::~BurstKit()
@@ -46,8 +87,14 @@ void BurstKit::SetNode(String hostUrl)
 		host = hostUrl;
 	else host = hostUrl + "/";
 
-	if (accountData.secretPhrase.isNotEmpty())
-		SetSecretPhrase(accountData.secretPhrase);
+	// refresh account data
+	if (accountData.secretPhrase_enc[0].getSize() > 0)
+	{
+		String addressID;
+		CalcPubKeys(GetSecretPhrase(), accountData.pubKey_HEX, accountData.pubKey_b64, addressID);
+
+		SetAccountID(addressID);
+	}
 }
 
 String BurstKit::GetNode()
@@ -55,14 +102,28 @@ String BurstKit::GetNode()
 	return host;
 }
 
-String BurstKit::GetAccountRS()
+String BurstKit::GetAccountRS(const unsigned int index)
 {
-	return accountData.reedSolomon;
+	if (index == 0)
+		return accountData.reedSolomon;
+	else
+	{
+		String pubKey_hex, pubKey_b64, rs, num;
+		GetWallet(index, pubKey_hex, pubKey_b64, rs, num);
+		return rs;
+	}
 }
 
-String BurstKit::GetAccountID()
+String BurstKit::GetAccountID(const unsigned int index)
 {
-	return accountData.accountID;
+	if (index == 0)
+		return accountData.accountID;
+	else
+	{
+		String pubKey_hex, pubKey_b64, rs, num;
+		GetWallet(index, pubKey_hex, pubKey_b64, rs, num);
+		return num;
+	}
 }
 
 String BurstKit::GetLastError(int &errorCode)
@@ -77,40 +138,75 @@ void BurstKit::SetError(int errorCode, String msg)
 	lastErrorDescription = msg;
 }
 
-
 // LOCAL ACCOUNT ---------------------------------------------------------------------------------------------
-void BurstKit::SetSecretPhrase(String passphrase)
+String BurstKit::GetSecretPhraseString(const unsigned int index)
 {
-	accountData.secretPhrase = passphrase; // TODO only store SHA256 of pw in memory and sign txs with that instead of full str
+	const MemoryBlock r = GetSecretPhrase(index);
+	if (CharPointer_UTF8::isValidString((const char* const)r.getData(), r.getSize()))
+		return r.toString();
+	else return String::empty;
+}
+
+MemoryBlock BurstKit::GetSecretPhrase(const unsigned int index)
+{
+	const MemoryBlock secretPhrase_mem = crypto.aesDecrypt(accountData.secretPhrase_enc[index % 2], memKey[0], memKey[1], accountData.memNonce[index % 2]);
 	
-	// get the public key
+	if (String((const char*)secretPhrase_mem.getData(), jmin<int>(secretPhrase_mem.getSize(), 3)).compare("MEM") == 0)
+		return MemoryBlock(&((char*)secretPhrase_mem.getData())[3], jmax<int>(0, secretPhrase_mem.getSize() - 3)); // "MEM"
+	else return MemoryBlock();
+}
+
+void BurstKit::SetSecretPhrase(const String passphrase, const unsigned int index)
+{
+	const String mem = "MEM" + passphrase;
+
+	accountData.secretPhrase_enc[index % 2] = crypto.aesEncrypt(MemoryBlock(mem.toUTF8(), mem.getNumBytesAsUTF8()), memKey[0], memKey[1], accountData.memNonce[index % 2]);
+	
+	String addressID;
+	CalcPubKeys(MemoryBlock(passphrase.toUTF8(), passphrase.getNumBytesAsUTF8()), accountData.pubKey_HEX, accountData.pubKey_b64, addressID);
+	SetAccountID(addressID);
+}
+
+void BurstKit::CalcPubKeys(const MemoryBlock pw, String &pubKey_hex, String &pubKey_b64, String &addressID)
+{
 	MemoryBlock pubKey;
-	crypto.getPublicKey(MemoryBlock(accountData.secretPhrase.toUTF8(), accountData.secretPhrase.getNumBytesAsUTF8()), pubKey);
-	accountData.pubKey_64HEX = String::toHexString(pubKey.getData(), pubKey.getSize()).removeCharacters(" ");
-	
-	// get the RS	
+	crypto.getPublicKey(pw, pubKey);
+
+	pubKey_hex = String::toHexString(pubKey.getData(), pubKey.getSize(), 0);	
+	pubKey_b64 = toBase64Encoding(pubKey);
+	addressID = ConvertPubKeyToNumerical(pubKey);
+}
+
+String BurstKit::ConvertPubKeyToNumerical(const MemoryBlock pubKey)
+{
 	SHA256 shapub(pubKey);// take SHA256 of pubKey
 	MemoryBlock shapubMem = shapub.getRawData();
-	String srt = String::toHexString(shapubMem.getData(), shapubMem.getSize()).removeCharacters(" ");
 
 	MemoryBlock shapubMemSwapped(shapubMem.getData(), 8);
 	BigInteger bi;
 	bi.loadFromMemoryBlock(shapubMemSwapped);
-	SetAccountID(bi.toString(10, 1));
+
+	return bi.toString(10, 1);
 }
 
-void BurstKit::SetAccount(String account)
+void BurstKit::GetWallet(const unsigned int index, String &pubKey_hex, String &pubKey_b64, String &reedSolomon, String &addressID)
+{
+	CalcPubKeys(GetSecretPhrase(index), pubKey_hex, pubKey_b64, addressID);
+	reedSolomon = ensureAccountRS(addressID);
+}
+
+void BurstKit::SetAccount(const String account)
 {
 	SetAccountRS(ensureAccountRS(account));
 }
 
-void BurstKit::SetAccountID(String accountID)
+void BurstKit::SetAccountID(const String accountID)
 {
 	accountData.reedSolomon = GetJSONvalue(rsConvert(accountID), "accountRS");
 	accountData.accountID = accountID;
 }
 
-void BurstKit::SetAccountRS(String reedSolomonIn)
+void BurstKit::SetAccountRS(const String reedSolomonIn)
 {
 	accountData.reedSolomon = reedSolomonIn;
 	if (accountData.reedSolomon.startsWith("BURST-") == false)
@@ -119,18 +215,82 @@ void BurstKit::SetAccountRS(String reedSolomonIn)
 	accountData.accountID = GetJSONvalue(getAccount(accountData.reedSolomon), "account");
 }
 
+uint64 BurstKit::GetBalance(const unsigned int index)
+{	
+	uint64 total = 0;
+	if (index == -1)
+	{ // add all wallet balances together
+		if (accountData.reedSolomon.isNotEmpty())
+		{
+			String balanceJSON = getBalance(accountData.reedSolomon);
+			String balanceStr = GetJSONvalue(balanceJSON, "balanceNQT");
+			total += GetUINT64(balanceStr);
+		}
+		int maxChainDepth = 10;
+		unsigned int index = 1;
+		while (maxChainDepth > 0)
+		{
+			uint64 bal = GetWalletBalance(index);
+			total += bal;
+
+			if (bal == 0)
+				maxChainDepth--;
+			else maxChainDepth = 10;
+
+			index++;
+		}
+	}
+	else
+	{ // single wallet balance
+		total = GetWalletBalance(index);
+	}
+	return total;
+}
+
+uint64 BurstKit::GetWalletBalance(const unsigned int index)
+{
+	String pubKey_hex, pubKey_b64;
+	String reedSolomon;
+	String addressID;
+	GetWallet(index, pubKey_hex, pubKey_b64, reedSolomon, addressID);
+
+	uint64 bal = 0;
+	String pubKeyFromChain = GetJSONvalue(getAccountPublicKey(reedSolomon), "publicKey");
+	if (pubKeyFromChain.compareIgnoreCase(pubKey_hex) == 0)
+	{ // make sure the onchain wallet matches our pubkey.
+		String balanceJSON = getBalance(reedSolomon);
+		String balanceStr = GetJSONvalue(balanceJSON, "balanceNQT");
+		return GetUINT64(balanceStr);
+	}
+
+	return 0;
+}
+
+String BurstKit::GetRecipientPublicKey(const String recipient)
+{
+	const String base64_chars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=");
+	if (recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64)
+		return recipient;	
+	if (recipient.containsOnly(base64_chars) && recipient.endsWithChar('=') && recipient.length() == 44)
+	{
+		MemoryBlock m = fromBase64Encoding(recipient);
+		return String::toHexString(m.getData(), m.getSize(), 0);
+	}
+	return String::empty;
+}
+
 // CreateTX, Sign And Broadcast ------------------------------------------------------------------------------------
-String BurstKit::CreateTX(String url, String feeNQT, String deadlineMinutes, bool broadcast)
+String BurstKit::CreateTX(const String url, const String feeNQT, const String deadlineMinutes, const bool broadcast, const unsigned int index)
 {
 	int retry = 5;
 	String signedTransactionBytesStr;
 	String unsignedTransactionBytesStr;
 	while (signedTransactionBytesStr.isEmpty() && --retry > 0)
 	{
-		unsignedTransactionBytesStr = GetUnsignedTransactionBytes(url + TxRequestArgs(accountData.pubKey_64HEX, feeNQT, deadlineMinutes));
+		unsignedTransactionBytesStr = GetUnsignedTransactionBytes(url + TxRequestArgs(accountData.pubKey_HEX, feeNQT, deadlineMinutes));
 		if (unsignedTransactionBytesStr.isNotEmpty() && unsignedTransactionBytesStr.containsOnly("0123456789ABCDEFabcdef"))
 		{
-			signedTransactionBytesStr = Sign(unsignedTransactionBytesStr);
+			signedTransactionBytesStr = Sign(unsignedTransactionBytesStr, index);
 			// parse the tx to check the validity
 			const String parseResult = parseTransaction(signedTransactionBytesStr, String::empty);
 
@@ -150,14 +310,14 @@ String BurstKit::CreateTX(String url, String feeNQT, String deadlineMinutes, boo
 	else return unsignedTransactionBytesStr; // probably an error occured. description returned
 }
 
-String BurstKit::SignAndBroadcast(String unsignedTransactionBytesStr)
+String BurstKit::SignAndBroadcast(const String unsignedTransactionBytesStr, const unsigned int index)
 {
-	return broadcastTransaction(Sign(unsignedTransactionBytesStr));
+	return broadcastTransaction(Sign(unsignedTransactionBytesStr, index));
 }
 
-String BurstKit::Sign(String unsignedTransactionBytesStr)
+String BurstKit::Sign(const String unsignedTransactionBytesStr, const unsigned int index)
 {
-	if (accountData.secretPhrase.isEmpty())
+	if (accountData.secretPhrase_enc[index %2].getSize() <= 0)
 		return String::empty;
 
 	MemoryBlock unsignedTransactionBytes;
@@ -166,10 +326,10 @@ String BurstKit::Sign(String unsignedTransactionBytesStr)
 	{
 		// get the prepared but unsigned bytes, and sign it locally with the pass phrase
 		// can test with signTransaction https://burstwiki.org/wiki/The_Burst_API#Sign_Transaction
-		MemoryBlock signature = crypto.sign(unsignedTransactionBytes, MemoryBlock(accountData.secretPhrase.toUTF8(), accountData.secretPhrase.getNumBytesAsUTF8()));
+		const MemoryBlock signature = crypto.sign(unsignedTransactionBytes, GetSecretPhrase(index));
 		MemoryBlock signedTransactionBytes(unsignedTransactionBytes);
 		signedTransactionBytes.copyFrom(signature.getData(), 32 * 3, signature.getSize());
-		String transactionBytesHex = String::toHexString(signedTransactionBytes.getData(), signedTransactionBytes.getSize()).removeCharacters(" ");
+		String transactionBytesHex = String::toHexString(signedTransactionBytes.getData(), signedTransactionBytes.getSize(), 0);
 
 		// for debug
 		//	URL signUrl(host + "burst?requestType=signTransaction&unsignedTransactionBytes=" + unsignedTransactionBytesStr + "&secretPhrase=" + secretPhraseEscapeChars);
@@ -182,20 +342,20 @@ String BurstKit::Sign(String unsignedTransactionBytesStr)
 }
 
 // UTILS --------------------------------------------------------------------------------------------------
-String BurstKit::GetJSONvalue(String json, String key)
+String BurstKit::GetJSONvalue(const String json, const String key)
 {
 	var jsonStructure;
 	Result r = JSON::parse(json, jsonStructure);
 	return jsonStructure.getProperty(key, String::empty);
 }
 
-String BurstKit::GetUrlStr(String url)
+String BurstKit::GetUrlStr(const String url)
 {
 	const String r =  URL(url).readEntireTextStream(true);
 	return r;
 }
 
-var BurstKit::GetUrlJson(String urlStr, String *json)
+var BurstKit::GetUrlJson(const String urlStr, String *json)
 {
 	String url = urlStr;
 	String jsonLocal;
@@ -235,10 +395,12 @@ String BurstKit::TxRequestArgs(
 
 int BurstKit::DetermineAccountUnit(String str)
 {
+	const String base64_chars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=");
 	bool isID = str.containsOnly("0123456789");
+	bool isPUBKEY = (str.containsOnly("0123456789ABCDEFabcdef") && str.length() == 64) || (str.containsOnly(base64_chars) && str.endsWithChar('=') && str.length() == 44);
 	bool isRS = (str.startsWithIgnoreCase("BURST-") && str.length() == 26); // BURST-XXXX-XXXX-XXXX-XXXXX
 	isRS = isRS ? isRS : (str.retainCharacters("-").length() == 3 && str.length() == 20); // XXXX-XXXX-XXXX-XXXXX
-	bool isAlias = str.startsWithChar('@') || (!isID && !isRS);
+	bool isAlias = str.startsWithChar('@') || (!isID && !isRS && !isPUBKEY);
 
 	if (isID)
 		return 0;
@@ -246,6 +408,8 @@ int BurstKit::DetermineAccountUnit(String str)
 		return 1;
 	else if (isAlias)
 		return 2;
+	else if (isPUBKEY)
+		return 3;
 
 	return -1;
 }
@@ -304,6 +468,16 @@ String BurstKit::ensureAccountRS(String str)
 		Result r = JSON::parse(alias, aliasJSON);
 		str = aliasJSON["accountRS"];
 	}
+	else if (accUnit == 3)
+	{
+		MemoryBlock pubKey;
+		//pubKey.loadFromHexString(str);
+		pubKey = fromBase64Encoding(str);
+		String addressID = ConvertPubKeyToNumerical(pubKey);
+
+		BurstAddress burstAddress;
+		str = "BURST-" + burstAddress.encode(GetUINT64(addressID));
+	}
 	return str;
 }
 
@@ -322,6 +496,13 @@ String BurstKit::ensureAccountID(String str)
 		Result r = JSON::parse(alias, aliasJSON);
 		str = aliasJSON["account"];
 	}
+	else if (accUnit == 3)
+	{
+		MemoryBlock pubKey;
+	//	pubKey.loadFromHexString(str);
+		pubKey = fromBase64Encoding(str);
+		str = ConvertPubKeyToNumerical(pubKey);
+	}
 	return str;
 }
 
@@ -333,16 +514,32 @@ static inline bool is_base64(unsigned char c) {
 	return (isalnum(c) || (c == '+') || (c == '/'));
 }
 
-std::string BurstKit::toBase64Encoding(unsigned char const* bytes_to_encode, unsigned int in_len)
+uint64 BurstKit::GetUINT64(const String uint64Str)
 {
-	std::string ret;
+	return *((uint64*)(GetUINT64MemoryBlock(uint64Str).getData()));
+}
+
+MemoryBlock BurstKit::GetUINT64MemoryBlock(const String uint64Str)
+{ // TODO drop the use of BigInteger. but String only returns signed version of int 64 (max size should be 2^64)
+	juce::BigInteger bigInt; 
+	bigInt.parseString(uint64Str, 10);
+	MemoryBlock m(bigInt.toMemoryBlock());
+	m.ensureSize(8, true);
+	return m;
+}
+
+String BurstKit::toBase64Encoding(MemoryBlock const& bytes_to_encode)
+{
+	String ret;
 	int i = 0;
 	int j = 0;
 	unsigned char char_array_3[3];
 	unsigned char char_array_4[4];
-
-	while (in_len--) {
-		char_array_3[i++] = *(bytes_to_encode++);
+	unsigned int in_len = bytes_to_encode.getSize();
+	unsigned char * bytes_to_encode_iter = (unsigned char*)bytes_to_encode.getData();
+	while(in_len--)
+	{
+		char_array_3[i++] = *(bytes_to_encode_iter++);
 		if (i == 3) {
 			char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
 			char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
@@ -375,34 +572,24 @@ std::string BurstKit::toBase64Encoding(unsigned char const* bytes_to_encode, uns
 	return ret;
 }
 
-uint64 BurstKit::GetUINT64(const String uint64Str)
+MemoryBlock BurstKit::fromBase64Encoding(String const& encoded_string)
 {
-	return *((uint64*)(GetUINT64MemoryBlock(uint64Str).getData()));
-}
-
-MemoryBlock BurstKit::GetUINT64MemoryBlock(const String uint64Str)
-{ // TODO drop the use of BigInteger. but String only returns signed version of int 64 (max size should be 2^64)
-	juce::BigInteger bigInt; 
-	bigInt.parseString(uint64Str, 10);
-	MemoryBlock m(bigInt.toMemoryBlock());
-	m.ensureSize(8, true);
-	return m;
-}
-
-juce::MemoryBlock BurstKit::fromBase64EncodingToMB(std::string const& encoded_string)
-{
-	size_t in_len = encoded_string.size();
+	size_t in_len = encoded_string.length();
 	int i = 0;
 	int j = 0;
 	int in_ = 0;
 	unsigned char char_array_4[4], char_array_3[3];
 	juce::MemoryBlock ret;
+	const String base64_chars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
 
-	while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
-		char_array_4[i++] = encoded_string[in_]; in_++;
-		if (i == 4) {
+	while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_]))
+	{
+		char_array_4[i++] = encoded_string[in_];
+		in_++;
+		if (i == 4)
+		{
 			for (i = 0; i <4; i++)
-				char_array_4[i] = (unsigned char)base64_chars.find(char_array_4[i]);
+				char_array_4[i] = (unsigned char)base64_chars.indexOfChar(char_array_4[i]);
 
 			char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
 			char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
@@ -414,60 +601,20 @@ juce::MemoryBlock BurstKit::fromBase64EncodingToMB(std::string const& encoded_st
 		}
 	}
 
-	if (i) {
+	if (i)
+	{
 		for (j = i; j <4; j++)
 			char_array_4[j] = 0;
 
 		for (j = 0; j <4; j++)
-			char_array_4[j] = (unsigned char)base64_chars.find(char_array_4[j]);
+			char_array_4[j] = (unsigned char)base64_chars.indexOfChar(char_array_4[j]);
 
 		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
 		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
 		char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
 
-		for (j = 0; (j < i - 1); j++)// ret += char_array_3[j];
+		for (j = 0; (j < i - 1); j++)
 			ret.append(&char_array_3[j], sizeof(char));
-	}
-	return ret;
-}
-
-std::string BurstKit::fromBase64Encoding(std::string const& encoded_string)
-{
-	size_t in_len = encoded_string.size();
-	int i = 0;
-	int j = 0;
-	int in_ = 0;
-	unsigned char char_array_4[4], char_array_3[3];
-	std::string ret;
-
-	while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
-		char_array_4[i++] = encoded_string[in_]; in_++;
-		if (i == 4) {
-			for (i = 0; i <4; i++)
-				char_array_4[i] = (unsigned char)base64_chars.find(char_array_4[i]);
-
-			char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-			char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-			char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-
-			for (i = 0; (i < 3); i++)
-				ret += char_array_3[i];
-			i = 0;
-		}
-	}
-
-	if (i) {
-		for (j = i; j <4; j++)
-			char_array_4[j] = 0;
-
-		for (j = 0; j <4; j++)
-			char_array_4[j] = (unsigned char)base64_chars.find(char_array_4[j]);
-
-		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-		char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-
-		for (j = 0; (j < i - 1); j++) ret += char_array_3[j];
 	}
 	return ret;
 }
@@ -501,14 +648,18 @@ String BurstKit::encryptTo( // Encrypt a message using AES without sending it.
 	String recipient, // is the account ID of the recipient.
 	String messageToEncrypt, // is either UTF - 8 text or a string of hex digits to be compressed and converted into a 1000 byte maximum bytecode then encrypted using AES
 	String messageToEncryptIsText, // is false if the message to encrypt is a hex string, true if the encrypted message is text
-	String secretPhrase) // is the secret passphrase of the recipient
+	String secretPhrase, // is the secret passphrase of the recipient
+	const unsigned int index) // is the private chain index
 {
 	MemoryBlock myPrivateKey;
 	if (secretPhrase.isNotEmpty())
 		crypto.getPrivateKey(MemoryBlock(secretPhrase.toRawUTF8(), secretPhrase.getNumBytesAsUTF8()), myPrivateKey);
-	else crypto.getPrivateKey(MemoryBlock(accountData.secretPhrase.toRawUTF8(), accountData.secretPhrase.getNumBytesAsUTF8()), myPrivateKey);
+	else crypto.getPrivateKey(GetSecretPhrase(index), myPrivateKey);
 
-	String pubKey = GetJSONvalue(getAccountPublicKey(recipient), "publicKey");
+	String pubKey = getAccountPublicKey(recipient);
+	if ((recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64) == false)
+		pubKey = GetJSONvalue(pubKey, "publicKey");
+
 	if (pubKey.isNotEmpty())
 	{
 		MemoryBlock theirPublicKey;
@@ -550,7 +701,8 @@ String BurstKit::decryptFrom( // Decrypt an AES-encrypted message.
 	String data, // is the AES-encrypted data
 	String nonce, // is the unique nonce associated with the encrypted data
 	String decryptedMessageIsText, // is false if the decrypted message is a hex string, true if the decrypted message is text
-	String secretPhrase) // is the secret passphrase of the recipient
+	String secretPhrase, // is the secret passphrase of the recipient
+	const unsigned int index) // is private chain index
 {
 	MemoryBlock dataEncrypted;
 	if (nonce.isEmpty() && data.length() > (32 * 2))
@@ -559,27 +711,31 @@ String BurstKit::decryptFrom( // Decrypt an AES-encrypted message.
 		data = data.substring(0, data.length() - (32 * 2));
 	}
 	dataEncrypted.loadFromHexString(data);
+	
+	MemoryBlock decrypted;
+	{
+		MemoryBlock myPrivateKey;
+		if (secretPhrase.isNotEmpty())
+			crypto.getPrivateKey(MemoryBlock(secretPhrase.toRawUTF8(), secretPhrase.getNumBytesAsUTF8()), myPrivateKey);
+		else crypto.getPrivateKey(GetSecretPhrase(index), myPrivateKey);
 
-	MemoryBlock myPrivateKey;
-	if (secretPhrase.isNotEmpty())
-		crypto.getPrivateKey(MemoryBlock(secretPhrase.toRawUTF8(), secretPhrase.getNumBytesAsUTF8()), myPrivateKey);
-	else crypto.getPrivateKey(MemoryBlock(accountData.secretPhrase.toRawUTF8(), accountData.secretPhrase.getNumBytesAsUTF8()), myPrivateKey);
+		MemoryBlock theirPublicKey;
+		if ((account.containsOnly("0123456789ABCDEFabcdef") && account.length() == 64) == false)
+			theirPublicKey.loadFromHexString(GetJSONvalue(getAccountPublicKey(account), "publicKey"));
+		else theirPublicKey.loadFromHexString(account);
 
-	MemoryBlock theirPublicKey;
-	theirPublicKey.loadFromHexString(GetJSONvalue(getAccountPublicKey(account), "publicKey"));
+		MemoryBlock nonceMB;
+		nonceMB.loadFromHexString(nonce);
 
-	MemoryBlock nonceMB;
-	nonceMB.loadFromHexString(nonce);
-
-	MemoryBlock decrypted = crypto.aesDecrypt(dataEncrypted, myPrivateKey, theirPublicKey, nonceMB);
-
+		decrypted = crypto.aesDecrypt(dataEncrypted, myPrivateKey, theirPublicKey, nonceMB);
+	}
 	const bool decryptedMessageIsTextBool = decryptedMessageIsText.compareIgnoreCase("true") == 0 || decryptedMessageIsText.getIntValue() > 0;
 	{	// unzip
 		MemoryInputStream srcStream(decrypted, false);
 		juce::MemoryBlock mb;
 		juce::GZIPDecompressorInputStream dezipper(&srcStream, false, juce::GZIPDecompressorInputStream::gzipFormat);
 		dezipper.readIntoMemoryBlock(mb);
-		if (decryptedMessageIsTextBool)
+		if (decryptedMessageIsTextBool && CharPointer_UTF8::isValidString((const char* const)mb.getData(), mb.getSize()))
 			return mb.toString(); 
 		else return String::toHexString(mb.getData(), mb.getSize(), 0);
 	}
@@ -623,6 +779,7 @@ String BurstKit::getAccountBlocks( // Get all blocks forged (generated) by an ac
 String BurstKit::getAccountId( // Get an account ID given public key. (or a secret passphrase (POST only))
 	String pubKey_64HEXIn) // is the public key of the account
 {
+	//return ConvertPubKeyToNumerical(pubKey); // "accountRS" "publicKey" "account"
 	return GetUrlStr(host + "burst?requestType=getAccountId&publicKey=" + pubKey_64HEXIn);
 }
 
@@ -675,12 +832,13 @@ String BurstKit::setAccountInfo( // Set account information. POST only. Refer to
 	String description, // is the description to associate with the account
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
 	String url(host + "burst?requestType=setAccountInfo" +
 		(name.isNotEmpty() ? "&name=" + name : "") +
 		(description.isNotEmpty() ? "&description=" + description : ""));
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::getAlias( // Get information about a given alias. 
@@ -697,12 +855,13 @@ String BurstKit::setAlias( // Create and/or assign an alias. POST only. Refer to
 	String aliasURI, // is the alias URI(e.g.http://www.google.com/)
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
 	String url(host + "burst?requestType=setAlias" +
 		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : "") +
 		(aliasURI.isNotEmpty() ? "&aliasURI=" + aliasURI : ""));
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::getAliases( // Get information on aliases owned by a given account in alias name order. 
@@ -725,14 +884,15 @@ String BurstKit::buyAlias( // Buy an alias. POST only. Refer to Create Transacti
 	String recipient, // is the account ID of the recipient (only required for sellAlias and only if there is a designated recipient)
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
 	const String url(host + "burst?requestType=buyAlias" +
 		(alias.isNotEmpty() ? "&alias=" + alias : "") +
 		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : "") +
 		(amountNQT.isNotEmpty() ? "&amountNQT=" + amountNQT : "") +
 		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : ""));
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::sellAlias( // Sell an alias. POST only. Refer to Create Transaction Request for common parameters. 
@@ -742,14 +902,15 @@ String BurstKit::sellAlias( // Sell an alias. POST only. Refer to Create Transac
 	String recipient, // is the account ID of the recipient(only required for sellAlias and only if there is a designated recipient)
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
 	const String url(host + "burst?requestType=sellAlias" +
 		(alias.isNotEmpty() ? "&alias=" + alias : "") +
 		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : "") +
 		(priceNQT.isNotEmpty() ? "&priceNQT=" + priceNQT : "") +
 		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : ""));
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::getBalance( // Get the balance of an account. 
@@ -824,9 +985,10 @@ String BurstKit::sendMoney( // Send individual amounts of BURST to up to 64 reci
 	String feeNQT,
 	String deadlineMinutes,
 	String referencedTransactionFullHash,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {	// make the url and send the data
-	return sendMoneyWithMessage(recipient, amountNQT, feeNQT, deadlineMinutes, "", false, referencedTransactionFullHash, broadcast);
+	return sendMoneyWithMessage(recipient, amountNQT, feeNQT, deadlineMinutes, "", false, referencedTransactionFullHash, broadcast, index);
 }
 
 String BurstKit::sendMoneyWithMessage(
@@ -837,7 +999,8 @@ String BurstKit::sendMoneyWithMessage(
 	String message,
 	bool encrpyted,
 	String referencedTransactionFullHash,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {	// make the url and send the data
 	String url;
 	if (encrpyted)
@@ -851,8 +1014,11 @@ String BurstKit::sendMoneyWithMessage(
 				message, // is either UTF - 8 text or a string of hex digits to be compressed and converted into a 1000 byte maximum bytecode then encrypted using AES
 				messageToEncryptIsText); // is false if the message to encrypt is a hex string, true if the encrypted message is text
 
+		String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
+
 		url = String(host + "burst?requestType=sendMoney" +
 			"&recipient=" + ensureAccountRS(recipient) +
+			(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
 			"&amountNQT=" + amountNQT +
 			(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
 			(messageToEncryptIsText.isNotEmpty() ? "&messageIsText=" + messageToEncryptIsText : "") +
@@ -861,13 +1027,15 @@ String BurstKit::sendMoneyWithMessage(
 	}
 	else
 	{
+		String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
 		url = String(host + "burst?requestType=sendMoney" +
 			"&recipient=" + ensureAccountRS(recipient) +
+			(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
 			"&amountNQT=" + amountNQT +
 			(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
 			(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) + "&messageIsText=true" : ""));
 	}
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::sendMoneyMulti( // Send the same amount of BURST to up to 128 recipients. POST only. Refer to Create Transaction Request for common parameters. 
@@ -875,7 +1043,8 @@ String BurstKit::sendMoneyMulti( // Send the same amount of BURST to up to 128 r
 	StringArray amountsNQT,
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
 	StringArray recipientStrArray;
 	for (int i = 0; i < jmin<int>(recipients.size(), amountsNQT.size(), 64); i++) // up to 64 recipients
@@ -886,7 +1055,7 @@ String BurstKit::sendMoneyMulti( // Send the same amount of BURST to up to 128 r
 
 	String url(host + "burst?requestType=sendMoneyMulti" +
 		"&recipients=" + recipientStr);
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::sendMoneyMultiSame( // Send the same amount of BURST to up to 128 recipients. POST only. Refer to Create Transaction Request for common parameters. 
@@ -894,13 +1063,14 @@ String BurstKit::sendMoneyMultiSame( // Send the same amount of BURST to up to 1
 	String amountNQT,
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
 	String recipientStr = recipients.joinIntoString(";");
 	String url(host + "burst?requestType=sendMoneyMultiSame" +
 		"&recipients=" + recipientStr + 
 		"&amountNQT=" + amountNQT);
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::readMessage( // Get a message given a transaction ID.
@@ -968,8 +1138,10 @@ String BurstKit::sendMessage( // Create an Arbitrary Message transaction. POST o
 	String referencedTransactionFullHash, // optional referencedTransactionFullHash parameter which creates a chained transaction, meaning that the new transaction cannot be confirmed unless the referenced transaction is also confirmed. This feature allows a simple way of transaction escrow.
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
+	recipientPublicKey = GetRecipientPublicKey(recipient); // recipientPublicKey.isEmpty() && recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
 	String url(host + "burst?requestType=sendMessage" +
 		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : "") +
 		(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) : "") +
@@ -987,7 +1159,7 @@ String BurstKit::sendMessage( // Create an Arbitrary Message transaction. POST o
 
 	if (GetUINT64(feeNQT) < 200000000 && referencedTransactionFullHash.isNotEmpty()) // 2 BURST for transactions that make use of referencedTransactionFullHash property when creating a new transaction.
 		feeNQT = "200000000";
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::suggestFee() // Get a cheap, standard, and priority fee. 
@@ -1005,11 +1177,14 @@ String BurstKit::setRewardRecipient( // Set Reward recipient is used to set the 
 	String recipient, // is the account ID of the recipient.
 	String feeNQT,
 	String deadlineMinutes,
-	bool broadcast)
+	bool broadcast,
+	const unsigned int index)
 {
+	String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
 	String url(host + "burst?requestType=setRewardRecipient" +
-		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : ""));
-	return CreateTX(url, feeNQT, deadlineMinutes, broadcast);
+		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : "") +
+		(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) );
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
 String BurstKit::getBlock( // Note: block overrides height which overrides timestamp.
@@ -1116,3 +1291,68 @@ String BurstKit::rsConvert( // Get both the Reed-Solomon account address and the
 //	return GetUrlStr(host + "burst?requestType=rsConvert&account=" + account);
 }
 
+#if BURSTKIT_SHABAL == 1
+unsigned int BurstKit::Shabal256_ccID()
+{
+	const int freeCCidx = ccUse.indexOf(false);
+	if (freeCCidx >= 0) // reuse contexts
+	{
+		if (m_supportAVX2 || m_supportAVX)
+			ccArraySIMD.getReference(freeCCidx) = ccInitSIMD;
+		else ccArray.getReference(freeCCidx) = ccInit;
+		ccUse.getReference(freeCCidx) = (true);
+		return freeCCidx + 1;
+	}
+	else // creates a new context when needed
+	{
+		if (m_supportAVX2 || m_supportAVX)
+			ccArraySIMD.add(ccInitSIMD);
+		else ccArray.add(ccInit);
+		ccUse.add(true);
+	}
+	return jmax<int>(ccArray.size(), ccArraySIMD.size()); // actual index is minus 1
+}
+
+void BurstKit::Shabal256_reset(unsigned int ccID)
+{
+	if (ccID < 1) return;
+
+	if (m_supportAVX2 || m_supportAVX)
+		simd_shabal256_init(&ccArraySIMD.getReference(ccID - 1));
+	else sph_shabal256_init(&ccArray.getReference(ccID - 1));
+}
+
+void BurstKit::Shabal256_update(unsigned int ccID, void *inbuf, int off, int len)
+{
+	if (ccID < 1) return;
+
+	if (ccID <= ccArraySIMD.size())
+	{
+		if (m_supportAVX2)
+			AVX2_simd_shabal256(&ccArraySIMD.getReference(ccID - 1), &(((unsigned char*)inbuf)[off]), len);
+		else if (m_supportAVX)
+			AVX_simd_shabal256(&ccArraySIMD.getReference(ccID - 1), &(((unsigned char*)inbuf)[off]), len);
+		/*	else if (m_supportSSE)
+				SSE_simd_shabal256(&ccArraySIMD.getReference(ccID - 1), &(((unsigned char*)inbuf)[off]), len);
+			else if (m_supportSSE2)
+				SSE2_simd_shabal256(&ccArraySIMD.getReference(ccID - 1), &(((unsigned char*)inbuf)[off]), len);*/
+	}
+	else sph_shabal256(&ccArray.getReference(ccID - 1), &(((unsigned char*)inbuf)[off]), len);
+}
+
+void BurstKit::Shabal256_digest(unsigned int ccID, void *dst_32bytes) // dst -> (32 bytes)
+{
+	if (ccID < 1) return;
+
+	if (ccID <= ccArraySIMD.size())
+	{
+		if (m_supportAVX2)
+			AVX2_simd_shabal256_close(&ccArraySIMD.getReference(ccID - 1), dst_32bytes);
+		else if (m_supportAVX)
+			AVX_simd_shabal256_close(&ccArraySIMD.getReference(ccID - 1), dst_32bytes);
+	}
+	else sph_shabal256_close(&ccArray.getReference(ccID - 1), dst_32bytes);
+	
+	ccUse.getReference(ccID - 1) = false; // free up the mem
+}
+#endif

@@ -362,13 +362,16 @@ extern "C"
 			return false;
 		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 
-		String returnString = kit->encryptTo(
+		String nonceString;
+		String returnString = kit->encryptTo(nonceString,
 			String(recipientStr, recipientBytes),
 			String(messageToEncryptStr, messageToEncryptBytes),
 			String(messageToEncryptIsTextStr, messageToEncryptIsTextBytes),
 			String(secretPhraseStr, secretPhraseBytes));
 
+		nonceBytes = nonceString.copyToUTF8(nonceStr, nonceBytes);
 		returnBytes = returnString.copyToUTF8(returnStr, returnBytes);
+
 		return true;
 	}
 	EXPORT bool BurstLib_getAccount Args_getAccount
@@ -572,13 +575,15 @@ extern "C"
 	}
 	EXPORT bool BurstLib_getBalance Args_getBalance
 	{
+		includeEffectiveBalance; // bcz C4100
+		includeEffectiveBalanceBytes;
+
 		if (handle == NULL)
 			return false;
 		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 
 		String returnString = kit->getBalance(
 			String(account, accountBytes),
-			String(includeEffectiveBalance, includeEffectiveBalanceBytes),
 			String(height, heightBytes),
 			String(requireBlock, requireBlockBytes),
 			String(requireLastBlock, requireLastBlockBytes) );
@@ -975,13 +980,53 @@ extern "C"
 	EXPORT bool BurstLib_rsConvert Args_rsConvert
 	{
 		if (handle == NULL)
-			return false;
+		return false;
 		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
 
 		String returnString = kit->rsConvert(
 			String(account, accountBytes));
 
 		returnBytes = returnString.copyToUTF8(returnStr, returnBytes);
+		return true;
+	}
+
+	EXPORT unsigned int BurstLib_Shabal256_ccID Args_Shabal256_ccID
+	{
+		if (handle == NULL)
+			return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
+
+		unsigned int r = kit->Shabal256_ccID();
+		return r;
+	}
+
+	EXPORT bool BurstLib_Shabal256_reset Args_Shabal256_reset
+	{
+		if (handle == NULL)
+			return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
+
+		kit->Shabal256_reset(ccID);
+		return true;
+	}
+
+	EXPORT bool BurstLib_Shabal256_update Args_Shabal256_update
+	{
+		if (handle == NULL)
+			return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
+
+		kit->Shabal256_update(ccID, inbuf, offset, len);
+		return true;
+	}
+
+	EXPORT bool BurstLib_Shabal256_digest Args_Shabal256_digest
+	{
+		if (handle == NULL)
+			return false;
+		BurstExt* kit = reinterpret_cast<BurstExt*>(handle);
+
+		kit->Shabal256_digest(ccID, dst_32bytes);
 		return true;
 	}
 }
