@@ -28,7 +28,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace juce;
 
-#define US_NET "https://wallet1.burst-team.us:2083/"
+#define US_NET "wallet.burst-team.us:2083" 
+// "https://wallet1.burst-team.us:2083/"
 
 #define FEE_QUANT 735000
 
@@ -43,9 +44,11 @@ public:
 
 	String GetLastError(int &errorCode);
 	void SetError(int errorCode, String msg);
-
+	
 	void SetNode(String hostUrl);
 	String GetNode();
+	void SetForceSSL_TSL(const bool force);
+	bool GetForceSSL_TSL();
 	
 	void SetSecretPhrase(const String passphrase, const unsigned int index = 0);
 	void GetWallet(unsigned int index, String &pubKey_hex, String &pubKey_b64, String &reedSolomon, String &addressID);
@@ -59,10 +62,10 @@ public:
 	void SetAccountID(const String accountID);
 	String GetAccountRS(const unsigned int index = 0);
 	String GetAccountID(const unsigned int index = 0);
-	String GetJSONvalue(const String json, const String key);
+	virtual String GetJSONvalue(const String json, const String key);
 
 	// API
-	String broadcastTransaction( // Broadcast a transaction to the network. POST only.
+	virtual String broadcastTransaction( // Broadcast a transaction to the network. POST only.
 		String signedTransactionBytesStr); // is the bytecode of a signed transaction
 	String calculateFullHash(
 		String unsignedTransactionBytes, // is the unsigned bytes of a transaction
@@ -274,11 +277,70 @@ public:
 	String getPeer( // Get information about a given peer. 
 		String peer); // is the IP address or domain name of the peer(plus optional port)
 	String getPeers( // Get a list of peer IP addresses.  Note: If neither active nor state is specified, all known peers are retrieved. 
-		String active, // is true for active(not NON_CONNECTED) peers only(optional, if true overrides state)
-		String state); // is the state of the peers, one of NON_CONNECTED, CONNECTED, or DISCONNECTED(optional)
+		const String active = String::empty, // is true for active(not NON_CONNECTED) peers only(optional, if true overrides state)
+		const String state = String::empty); // is the state of the peers, one of NON_CONNECTED, CONNECTED, or DISCONNECTED(optional)
 	String getTime(); // Get the current time. 
 	String getState( // Get the state of the server node and network. 
 		String includeCounts); // is true if the fields beginning with numberOf... are to be included(optional); password protected like the Debug Operations if true.
+
+	String getAsset( // Get asset information given an asset ID. 
+		const String asset); // is the ID of the asset
+
+	String transferAsset( // Get the state of the server node and network. 
+		const String recipient, // is the recipient account ID
+		const String asset, // is the ID of the asset being transferred
+		const String quantityQNT, // is the amount(in QNT) of the asset being transferred
+		const String feeNQT,
+		const String deadlineMinutes,
+		const bool broadcast,
+		const unsigned int index);
+
+	String issueAsset( // Create an asset on the exchange
+		const String name, // is the name of the asset
+		const String description, // is the url - encoded description of the asset in UTF - 8 with a maximum length of 1000 bytes(optional)
+		const String quantityQNT, // is the total amount(in QNT) of the asset in existence
+		const String decimals, // is the number of decimal places used by the asset(optional, zero default)
+		const String feeNQT,
+		const String deadlineMinutes,
+		bool broadcast,
+		const unsigned int index);
+
+	String getAssetAccounts( // Get trades associated with a given asset and/or account in reverse block height order. 
+		const String asset, // is the asset ID
+		const String height = String::empty, // is the height of the blockchain to determine the accounts(optional, default is last block)
+		const String firstIndex = String::empty, // is a zero - based index to the first account to retrieve(optional)
+		const String lastIndex = String::empty); // is a zero - based index to the last account to retrieve(optional)
+
+	String getAssetsByIssuer( // Get trades associated with a given asset and/or account in reverse block height order. 
+		const String account, // is the account ID
+		const String firstIndex = String::empty, // is a zero - based index to the first trade to retrieve(optional)
+		const String lastIndex = String::empty); // is a zero - based index to the last trade to retrieve(optional)
+
+	String getTrades( // Get trades associated with a given asset and/or account in reverse block height order. 
+		const String asset, // is the asset ID
+		const String account = String::empty, // is the account ID(optional if asset provided)
+		const String firstIndex = String::empty, // is a zero - based index to the first trade to retrieve(optional)
+		const String lastIndex = String::empty, // is a zero - based index to the last trade to retrieve(optional)
+		const String includeAssetInfo = String::empty); // is true if the decimals and name fields are to be included(optional)
+
+	String placeAskOrder( // Place an asset order
+		const String asset, // is the asset ID of the asset being ordered
+		const String quantityQNT, // is the amount(in QNT) of the asset being ordered
+		const String priceNQT, // is the bid / ask price(in NQT)
+		const String feeNQT,
+		const String deadlineMinutes,
+		bool broadcast,
+		const unsigned int index);
+
+	String placeBidOrder( // Place an asset order
+		const String asset, // is the asset ID of the asset being ordered
+		const String quantityQNT, // is the amount(in QNT) of the asset being ordered
+		const String priceNQT, // is the bid / ask price(in NQT)
+		const String feeNQT,
+		const String deadlineMinutes,
+		bool broadcast,
+		const unsigned int index);
+
 
 	String longConvert( // Converts an ID to the signed long integer representation used internally. 
 		String id); // is the numerical ID, in decimal form but equivalent to an 8-byte unsigned integer as produced by SHA-256 hashing
@@ -321,7 +383,8 @@ public:
 		String pubKey_b64;
 	};
 	localAccountData accountData;
-	String host;
+	String protocol;
+	String nodeAddress;
 
 	int DetermineAccountUnit(String str);
 	String ensureAccountAlias(String str);
@@ -329,6 +392,7 @@ public:
 	String ensureAccountID(String str);
 	String getAccountAliases(String str);
 
+	virtual String GetUrlStr(const String url);
 	String GetSecretPhraseString(const unsigned int index = 0);
 private:
 	MemoryBlock GetSecretPhrase(const unsigned int index = 0);
@@ -351,18 +415,17 @@ private:
 	String Sign(const String unsignedTransactionBytesStr, const unsigned int index);
 
 	var GetUrlJson(const String urlStr, String *json = nullptr);
-	String GetUrlStr(const String url);
 
 	StringArray toReedSolomonEncoding(MemoryBlock mb); // TODO implement like https://github.com/aprock/BurstKit/blob/master/BurstKit/Utils/BurstAddress.swift
 	MemoryBlock fromReedSolomonEncoding(StringArray encoded_strings);
 
+	bool forceSSL;
 	Crypto crypto;
 	const char *burstKitVersionString;
 	int lastErrorCode;
 	String lastErrorDescription;
 
 	MemoryBlock memKey[2];
-
 };
 
 #endif
@@ -425,16 +488,18 @@ getEscrowTransaction
 getSubscription
 getSubscriptionsToAccount
 
-getTrades
-issueAsset
-placeAskOrder
-placeBidOrder
 
 sendMoneyEscrow
 sendMoneySubscription
 submitNonce
 subscriptionCancel
+
+
+issueAsset
 transferAsset
+getTrades
+placeAskOrder
+placeBidOrder
 
 getAccountsWithRewardRecipient();
 

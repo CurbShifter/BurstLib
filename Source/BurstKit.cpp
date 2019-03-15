@@ -21,8 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace juce;
 
-BurstKit::BurstKit(String hostUrl, String passPhrase) : host(hostUrl), burstKitVersionString(SVNRevision)
-{
+BurstKit::BurstKit(String hostUrl, String passPhrase) : burstKitVersionString(SVNRevision), forceSSL(false)
+{	
+	SetNode(hostUrl);
+
 	if (passPhrase.isNotEmpty())
 	{
 		SetSecretPhrase(passPhrase, 0);
@@ -83,10 +85,26 @@ const char* BurstKit::GetBurstKitVersionString()
 
 void BurstKit::SetNode(String hostUrl)
 {
-	if (hostUrl.endsWithChar('/'))
-		host = hostUrl;
-	else host = hostUrl + "/";
+	nodeAddress = hostUrl;
+	if (nodeAddress.endsWithChar('/')) // remove trailing
+		nodeAddress = nodeAddress.substring(0, nodeAddress.length() - 1);
 
+	// remove protocol from nodeAddress
+	if (nodeAddress.startsWith("http://"))
+		nodeAddress = nodeAddress.substring(strlen("http://"), nodeAddress.length());
+	else if (nodeAddress.startsWith("https://"))
+		nodeAddress = nodeAddress.substring(strlen("https://"), nodeAddress.length());
+	
+	// check protocol
+	if (forceSSL)
+		protocol = "https://";
+	else
+	{ // check if ssl is available. else default back to plain
+		protocol = "https://";
+		String constants = getConstants();
+		if (constants.isEmpty())
+			protocol = "http://";
+	}
 	// refresh account data
 	if (accountData.secretPhrase_enc[0].getSize() > 0)
 	{
@@ -97,9 +115,20 @@ void BurstKit::SetNode(String hostUrl)
 	}
 }
 
+void BurstKit::SetForceSSL_TSL(const bool force)
+{
+	forceSSL = force;
+	SetNode(nodeAddress);
+}
+
+bool BurstKit::GetForceSSL_TSL()
+{
+	return forceSSL;
+}
+
 String BurstKit::GetNode()
 {
-	return host;
+	return protocol + nodeAddress + "/";
 }
 
 String BurstKit::GetAccountRS(const unsigned int index)
@@ -332,7 +361,7 @@ String BurstKit::Sign(const String unsignedTransactionBytesStr, const unsigned i
 		String transactionBytesHex = String::toHexString(signedTransactionBytes.getData(), signedTransactionBytes.getSize(), 0);
 
 		// for debug
-		//	URL signUrl(host + "burst?requestType=signTransaction&unsignedTransactionBytes=" + unsignedTransactionBytesStr + "&secretPhrase=" + secretPhraseEscapeChars);
+		//	URL signUrl(GetNode() + "burst?requestType=signTransaction&unsignedTransactionBytes=" + unsignedTransactionBytesStr + "&secretPhrase=" + secretPhraseEscapeChars);
 		//	String signUrlRes = signUrl.readEntireTextStream(true);
 		//	String transactionBytes; // the final transactionBytes. unsignedTransactionBytesStr + transactionBytesHex
 
@@ -387,9 +416,17 @@ String BurstKit::TxRequestArgs(
 	String deadlineMinutes)
 {
 	// TODO implement suggest fee
+	String feeNQTstr = feeNQT;
+	if (feeNQT.compareIgnoreCase("cheap") == 0)
+		feeNQTstr = GetJSONvalue(suggestFee(), "cheap");
+	else if (feeNQT.compareIgnoreCase("standard") == 0 || feeNQT.compareIgnoreCase("normal") == 0 || feeNQT.compareIgnoreCase("0") == 0)
+		feeNQTstr = GetJSONvalue(suggestFee(), "standard");
+	else if (feeNQT.compareIgnoreCase("priority") == 0)
+		feeNQTstr = GetJSONvalue(suggestFee(), "priority");
+
 	return
 		"&publicKey=" + publicKey +
-		"&feeNQT=" + feeNQT +
+		"&feeNQT=" + feeNQTstr +
 		"&deadline=" + deadlineMinutes;
 }
 
@@ -445,7 +482,7 @@ String BurstKit::getAccountAliases(String str)
 			const int s = aliasesJSON["aliases"].size();
 			for (int i = 0; i < s; i++)
 			{
-				aliasNames += aliasesJSON["aliases"][i]["aliasName"].toString() + (i < s - 1 ? ";" : "");
+				aliasNames += aliasesJSON["aliases"][i]["aliasName"].toString() + (i < s - 1 ? ";" : String::empty);
 			}
 			return aliasNames;
 		}
@@ -625,8 +662,8 @@ String BurstKit::broadcastTransaction( // Broadcast a transaction to the network
 {
 	if (signedTransactionBytesStrHex.isNotEmpty())
 	{ // send the signed transaction, POST only.
-		URL url(host + "burst");
-		String post("requestType=broadcastTransaction" + (signedTransactionBytesStrHex.isNotEmpty() ? "&transactionBytes=" + signedTransactionBytesStrHex : ""));
+		URL url(GetNode() + "burst");
+		String post("requestType=broadcastTransaction" + (signedTransactionBytesStrHex.isNotEmpty() ? "&transactionBytes=" + signedTransactionBytesStrHex : String::empty));
 
 		URL postURL = url.withPOSTData(MemoryBlock(post.toUTF8(), post.getNumBytesAsUTF8()));
 		String json = postURL.readEntireTextStream(true);
@@ -640,7 +677,7 @@ String BurstKit::calculateFullHash(
 	String unsignedTransactionBytes, // is the unsigned bytes of a transaction (optional if unsignedTransactionJSON is provided)
 	String signatureHash) // is the SHA-256 hash of the transaction signature
 {
-	return GetUrlStr(host + "burst?requestType=calculateFullHash&unsignedTransactionBytes=" + unsignedTransactionBytes + "&signatureHash=" + signatureHash);
+	return GetUrlStr(GetNode() + "burst?requestType=calculateFullHash&unsignedTransactionBytes=" + unsignedTransactionBytes + "&signatureHash=" + signatureHash);
 }
 
 String BurstKit::encryptTo( // Encrypt a message using AES without sending it.
@@ -674,7 +711,8 @@ String BurstKit::encryptTo( // Encrypt a message using AES without sending it.
 
 		MemoryOutputStream destStream(0); // gzip with DEFAULT_COMPRESSION == 6
 		juce::GZIPCompressorOutputStream zipper(&destStream, 6, false, juce::GZIPCompressorOutputStream::windowBitsGZIP);
-		zipper.write(data.getData(), data.getSize());
+		if (data.getSize() > 0)
+			zipper.write(data.getData(), data.getSize());
 		zipper.flush();
 		plainData = destStream.getMemoryBlock();
 
@@ -693,7 +731,7 @@ String BurstKit::encryptTo( // Encrypt a message using AES without sending it.
 		}
 	}
 	return String::empty;
-	//String chechReturnStr = GetUrlStr(host + "burst?requestType=encryptTo&account=" + ensureAccountRS(recipient) + "&messageToEncrypt=" + messageToEncrypt + "&messageToEncryptIsText=" + messageToEncryptIsText + "&secretPhrase=" + secretPhraseEscapeChars);
+	//String chechReturnStr = GetUrlStr(GetNode() + "burst?requestType=encryptTo&account=" + ensureAccountRS(recipient) + "&messageToEncrypt=" + messageToEncrypt + "&messageToEncryptIsText=" + messageToEncryptIsText + "&secretPhrase=" + secretPhraseEscapeChars);
 }
 
 String BurstKit::decryptFrom( // Decrypt an AES-encrypted message. 
@@ -739,13 +777,13 @@ String BurstKit::decryptFrom( // Decrypt an AES-encrypted message.
 			return mb.toString(); 
 		else return String::toHexString(mb.getData(), mb.getSize(), 0);
 	}
-	// return GetUrlStr(host + "burst?requestType=decryptFrom&account=" + ensureAccountRS(account) + "&data=" + data + "&nonce=" + nonce + "&decryptedMessageIsText=" + decryptedMessageIsText + "&secretPhrase=" + secretPhraseEscapeChars);
+	// return GetUrlStr(GetNode() + "burst?requestType=decryptFrom&account=" + ensureAccountRS(account) + "&data=" + data + "&nonce=" + nonce + "&decryptedMessageIsText=" + decryptedMessageIsText + "&secretPhrase=" + secretPhraseEscapeChars);
 }
 
 String BurstKit::getAccount( // Get account information given an account ID.
 	String account_RS_or_ID) // is the account ID (or ReedSolomon, detected by BURST- Prefix and non numerical chars)
 {
-	return GetUrlStr(host + "burst?requestType=getAccount&account=" + ensureAccountRS(account_RS_or_ID));
+	return GetUrlStr(GetNode() + "burst?requestType=getAccount&account=" + ensureAccountRS(account_RS_or_ID));
 }
 
 String BurstKit::getAccountBlockIds( // Get the block IDs of all blocks forged (generated) by an account in reverse block height order. 
@@ -754,11 +792,11 @@ String BurstKit::getAccountBlockIds( // Get the block IDs of all blocks forged (
 	String firstIndex, // is the zero-based index to the first block to retrieve (optional)
 	String lastIndex) // is the zero-based index to the last block to retrieve (optional)
 {
-	return GetUrlStr(host + "burst?requestType=getAccountBlockIds" +
+	return GetUrlStr(GetNode() + "burst?requestType=getAccountBlockIds" +
 		"&account=" + ensureAccountRS(account) +
-		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : "") +
-		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : "") +
-		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : "") );
+		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) );
 }
 
 String BurstKit::getAccountBlocks( // Get all blocks forged (generated) by an account in reverse block height order. 
@@ -768,19 +806,19 @@ String BurstKit::getAccountBlocks( // Get all blocks forged (generated) by an ac
 	String lastIndex, // is the zero - based index to the last block to retrieve (optional)
 	String includeTransactions) // is the true to retrieve transaction details, otherwise only transaction IDs are retrieved (optional)
 {
-	return GetUrlStr(host + "burst?requestType=getAccountBlocks" +
+	return GetUrlStr(GetNode() + "burst?requestType=getAccountBlocks" +
 		"&account=" + ensureAccountRS(account) +
-		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : "") +
-		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : "") +
-		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : "") +
-		(includeTransactions.isNotEmpty() ? "&includeTransactions=" + includeTransactions : ""));
+		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+		(includeTransactions.isNotEmpty() ? "&includeTransactions=" + includeTransactions : String::empty));
 }
 
 String BurstKit::getAccountId( // Get an account ID given public key. (or a secret passphrase (POST only))
 	String pubKey_64HEXIn) // is the public key of the account
 {
 	//return ConvertPubKeyToNumerical(pubKey); // "accountRS" "publicKey" "account"
-	return GetUrlStr(host + "burst?requestType=getAccountId&publicKey=" + pubKey_64HEXIn);
+	return GetUrlStr(GetNode() + "burst?requestType=getAccountId&publicKey=" + pubKey_64HEXIn);
 }
 
 String BurstKit::getAccountTransactionIds( // Get the transaction IDs associated with an account in reverse block timestamp order. Note: Refer to Get Constants for definitions of types and subtypes
@@ -792,20 +830,20 @@ String BurstKit::getAccountTransactionIds( // Get the transaction IDs associated
 	String lastIndex, // is the a zero - based index to the last transaction ID to retrieve(optional)
 	String numberOfConfirmations) // is the required number of confirmations per transaction(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getAccountTransactionIds" +
+	return GetUrlStr(GetNode() + "burst?requestType=getAccountTransactionIds" +
 		"&account=" + ensureAccountRS(account) + 
-		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : "") + 
-		(type.isNotEmpty() ? "&type=" + type : "") +
-		(subtype.isNotEmpty() ? "&subtype=" + subtype : "") +
-		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : "") +
-		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : "") +
-		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : "") );
+		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) + 
+		(type.isNotEmpty() ? "&type=" + type : String::empty) +
+		(subtype.isNotEmpty() ? "&subtype=" + subtype : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty) );
 }
 
 String BurstKit::getAccountPublicKey( // Get the public key associated with an account ID. 
 	String account) // is the account ID
 {
-	return GetUrlStr(host + "burst?requestType=getAccountPublicKey&account=" + ensureAccountRS(account));
+	return GetUrlStr(GetNode() + "burst?requestType=getAccountPublicKey&account=" + ensureAccountRS(account));
 }
 
 String BurstKit::getAccountTransactions( // Get the transactions associated with an account in reverse block timestamp order. 
@@ -817,14 +855,14 @@ String BurstKit::getAccountTransactions( // Get the transactions associated with
 	String lastIndex, // is the a zero - based index to the last transaction ID to retrieve(optional)
 	String numberOfConfirmations) // is the required number of confirmations per transaction(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getAccountTransactions" +
+	return GetUrlStr(GetNode() + "burst?requestType=getAccountTransactions" +
 		"&account=" + ensureAccountRS(account) +
-		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : "") +
-		(type.isNotEmpty() ? "&type=" + type : "") +
-		(subtype.isNotEmpty() ? "&subtype=" + subtype : "") +
-		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : "") +
-		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : "") +
-		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : ""));
+		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+		(type.isNotEmpty() ? "&type=" + type : String::empty) +
+		(subtype.isNotEmpty() ? "&subtype=" + subtype : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty));
 }
 
 String BurstKit::setAccountInfo( // Set account information. POST only. Refer to Create Transaction Request for common parameters. 
@@ -835,9 +873,9 @@ String BurstKit::setAccountInfo( // Set account information. POST only. Refer to
 	bool broadcast,
 	const unsigned int index)
 {
-	String url(host + "burst?requestType=setAccountInfo" +
-		(name.isNotEmpty() ? "&name=" + name : "") +
-		(description.isNotEmpty() ? "&description=" + description : ""));
+	String url(GetNode() + "burst?requestType=setAccountInfo" +
+		(name.isNotEmpty() ? "&name=" + name : String::empty) +
+		(description.isNotEmpty() ? "&description=" + description : String::empty));
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
@@ -845,9 +883,9 @@ String BurstKit::getAlias( // Get information about a given alias.
 	String alias, // is the alias ID (optional)
 	String aliasName) // is the name of the alias (optional if alias provided)
 {
-	return GetUrlStr(host + "burst?requestType=getAlias" +
-		(alias.isNotEmpty() ? "&alias=" + alias : "") +
-		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getAlias" +
+		(alias.isNotEmpty() ? "&alias=" + alias : String::empty) +
+		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : String::empty));
 }
 
 String BurstKit::setAlias( // Create and/or assign an alias. POST only. Refer to Create Transaction Request for common parameters. 
@@ -858,9 +896,9 @@ String BurstKit::setAlias( // Create and/or assign an alias. POST only. Refer to
 	bool broadcast,
 	const unsigned int index)
 {
-	String url(host + "burst?requestType=setAlias" +
-		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : "") +
-		(aliasURI.isNotEmpty() ? "&aliasURI=" + aliasURI : ""));
+	String url(GetNode() + "burst?requestType=setAlias" +
+		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : String::empty) +
+		(aliasURI.isNotEmpty() ? "&aliasURI=" + aliasURI : String::empty));
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
@@ -870,11 +908,11 @@ String BurstKit::getAliases( // Get information on aliases owned by a given acco
 	String firstIndex, // is the zero - based index to the first alias to retrieve(optional)
 	String lastIndex) // is the zero - based index to the last alias to retrieve(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getAliases" +
+	return GetUrlStr(GetNode() + "burst?requestType=getAliases" +
 		"&account=" + ensureAccountRS(account) +
-		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : "") +
-		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : "") +
-		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : ""));
+		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty));
 }
 
 String BurstKit::buyAlias( // Buy an alias. POST only. Refer to Create Transaction Request for common parameters. 
@@ -887,11 +925,11 @@ String BurstKit::buyAlias( // Buy an alias. POST only. Refer to Create Transacti
 	bool broadcast,
 	const unsigned int index)
 {
-	const String url(host + "burst?requestType=buyAlias" +
-		(alias.isNotEmpty() ? "&alias=" + alias : "") +
-		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : "") +
-		(amountNQT.isNotEmpty() ? "&amountNQT=" + amountNQT : "") +
-		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : ""));
+	const String url(GetNode() + "burst?requestType=buyAlias" +
+		(alias.isNotEmpty() ? "&alias=" + alias : String::empty) +
+		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : String::empty) +
+		(amountNQT.isNotEmpty() ? "&amountNQT=" + amountNQT : String::empty) +
+		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : String::empty));
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
@@ -905,11 +943,11 @@ String BurstKit::sellAlias( // Sell an alias. POST only. Refer to Create Transac
 	bool broadcast,
 	const unsigned int index)
 {
-	const String url(host + "burst?requestType=sellAlias" +
-		(alias.isNotEmpty() ? "&alias=" + alias : "") +
-		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : "") +
-		(priceNQT.isNotEmpty() ? "&priceNQT=" + priceNQT : "") +
-		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : ""));
+	const String url(GetNode() + "burst?requestType=sellAlias" +
+		(alias.isNotEmpty() ? "&alias=" + alias : String::empty) +
+		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : String::empty) +
+		(priceNQT.isNotEmpty() ? "&priceNQT=" + priceNQT : String::empty) +
+		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : String::empty));
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
@@ -920,63 +958,63 @@ String BurstKit::getBalance( // Get the balance of an account.
 	String requireBlock, // is the block ID of a block that must be present in the blockchain during execution(optional)
 	String requireLastBlock) // is the block ID of a block that must be last in the blockchain during execution(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getBalance" +
+	return GetUrlStr(GetNode() + "burst?requestType=getBalance" +
 		"&account=" + ensureAccountRS(account) +
-	//	(includeEffectiveBalance.isNotEmpty() ? "&includeEffectiveBalance=" + includeEffectiveBalance : "") +
-		(height.isNotEmpty() ? "&height=" + height : "") +
-		(requireBlock.isNotEmpty() ? "&requireBlock=" + requireBlock : "") +
-		(requireLastBlock.isNotEmpty() ? "&requireLastBlock=" + requireLastBlock : ""));
+	//	(includeEffectiveBalance.isNotEmpty() ? "&includeEffectiveBalance=" + includeEffectiveBalance : String::empty) +
+		(height.isNotEmpty() ? "&height=" + height : String::empty) +
+		(requireBlock.isNotEmpty() ? "&requireBlock=" + requireBlock : String::empty) +
+		(requireLastBlock.isNotEmpty() ? "&requireLastBlock=" + requireLastBlock : String::empty));
 }
 
 String BurstKit::getGuaranteedBalance( // Get the balance of an account that is confirmed at least a specified number of times. 
 	String account, // is the account ID
 	String numberOfConfirmations) // is the minimum number of confirmations for a transaction to be included in the guaranteed balance(optional, if omitted or zero then minimally confirmed transactions are included)
 {
-	return GetUrlStr(host + "burst?requestType=getGuaranteedBalance" +
+	return GetUrlStr(GetNode() + "burst?requestType=getGuaranteedBalance" +
 		"&account=" + ensureAccountRS(account) +
-		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : "") );
+		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty) );
 }
 
 String BurstKit::getTransaction( // Get a transaction object given a transaction ID. 
 	String transactionID, // a transaction ID. 
 	String fullHash) //  is the full hash of the transaction (optional if transaction ID is provided)	
 {
-	return GetUrlStr(host + "burst?requestType=getTransaction" +
-		(transactionID.isNotEmpty() ? "&transaction=" + transactionID : "") +
-		(fullHash.isNotEmpty() ? "&fullHash=" + fullHash : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getTransaction" +
+		(transactionID.isNotEmpty() ? "&transaction=" + transactionID : String::empty) +
+		(fullHash.isNotEmpty() ? "&fullHash=" + fullHash : String::empty));
 }
 String BurstKit::getEscrowTransaction( // Get information regarding an escrow with the escrow transaction ID. 
 	String transactionID) // a transaction ID. 
 {
-	return GetUrlStr(host + "burst?requestType=getEscrowTransaction" +
-		(transactionID.isNotEmpty() ? "&escrow=" + transactionID : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getEscrowTransaction" +
+		(transactionID.isNotEmpty() ? "&escrow=" + transactionID : String::empty));
 }
 String BurstKit::getUnconfirmedTransactionsIds( // Get a list of unconfirmed transaction IDs associated with an account. 
 	String account) // is the account ID(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getUnconfirmedTransactionIds" +
-		(account.isNotEmpty() ? "&account=" + account : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getUnconfirmedTransactionIds" +
+		(account.isNotEmpty() ? "&account=" + account : String::empty));
 }
 String BurstKit::getUnconfirmedTransactions( // Get a list of unconfirmed transactions associated with an account. 
 	String account) // is the account ID(optional)		
 {
-	return GetUrlStr(host + "burst?requestType=getUnconfirmedTransactions" +
-		(account.isNotEmpty() ? "&account=" + ensureAccountID(account) : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getUnconfirmedTransactions" +
+		(account.isNotEmpty() ? "&account=" + ensureAccountID(account) : String::empty));
 }
 String BurstKit::parseTransaction( // Get a transaction object given a (signed or unsigned) transaction bytecode, or re-parse a transaction object. Verify the signature.
 	String transactionBytes, // is the signed or unsigned bytecode of the transaction(optional)
 	String transactionJSON) // is the transaction object(optional if transactionBytes is included)		
 {
-	return GetUrlStr(host + "burst?requestType=parseTransaction" +
-		(transactionBytes.isNotEmpty() ? "&transactionBytes=" + transactionBytes : "") +
-		(transactionJSON.isNotEmpty() ? "&transactionJSON=" + transactionJSON : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=parseTransaction" +
+		(transactionBytes.isNotEmpty() ? "&transactionBytes=" + transactionBytes : String::empty) +
+		(transactionJSON.isNotEmpty() ? "&transactionJSON=" + transactionJSON : String::empty));
 }
 
 String BurstKit::getTransactionBytes( // Get the bytecode of a transaction. 
 	String transaction) // is the transaction ID
 {
-	return GetUrlStr(host + "burst?requestType=getTransactionBytes" +
-		(transaction.isNotEmpty() ? "&transaction=" + transaction : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getTransactionBytes" +
+		(transaction.isNotEmpty() ? "&transaction=" + transaction : String::empty));
 }
 
 String BurstKit::sendMoney( // Send individual amounts of BURST to up to 64 recipients. POST only. Refer to Create Transaction Request for common parameters. 
@@ -988,7 +1026,7 @@ String BurstKit::sendMoney( // Send individual amounts of BURST to up to 64 reci
 	bool broadcast,
 	const unsigned int index)
 {	// make the url and send the data
-	return sendMoneyWithMessage(recipient, amountNQT, feeNQT, deadlineMinutes, "", false, referencedTransactionFullHash, broadcast, index);
+	return sendMoneyWithMessage(recipient, amountNQT, feeNQT, deadlineMinutes, String::empty, false, referencedTransactionFullHash, broadcast, index);
 }
 
 String BurstKit::sendMoneyWithMessage(
@@ -1007,7 +1045,6 @@ String BurstKit::sendMoneyWithMessage(
 	{
 		String encryptedMessageNonce;
 		String messageToEncryptIsText = ("true"); // is false if the message to encrypt is a hex string, true if the encrypted message is text
-
 		String encryptedMessageData = encryptTo( // Encrypt a message using AES without sending it.
 				encryptedMessageNonce,
 				recipient, // is the account ID of the recipient.
@@ -1016,24 +1053,31 @@ String BurstKit::sendMoneyWithMessage(
 
 		String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
 
-		url = String(host + "burst?requestType=sendMoney" +
-			"&recipient=" + ensureAccountRS(recipient) +
-			(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
-			"&amountNQT=" + amountNQT +
-			(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
-			(messageToEncryptIsText.isNotEmpty() ? "&messageIsText=" + messageToEncryptIsText : "") +
-			(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : "") +
-			(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : ""));
+		{
+			url = String(GetNode() + "burst?requestType=" +
+				(amountNQT.getLargeIntValue() > 0 ? "sendMoney" : "sendMessage") +
+				"&recipient=" + ensureAccountRS(recipient) +
+				(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
+				(amountNQT.getLargeIntValue() > 0 ? "&amountNQT=" + amountNQT : String::empty) +
+				(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : String::empty) +
+				(messageToEncryptIsText.isNotEmpty() ? "&messageIsText=" + messageToEncryptIsText : String::empty) +
+				(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : String::empty) +
+				(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : String::empty));
+		}
 	}
 	else
 	{
 		String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
-		url = String(host + "burst?requestType=sendMoney" +
-			"&recipient=" + ensureAccountRS(recipient) +
-			(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
-			"&amountNQT=" + amountNQT +
-			(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
-			(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) + "&messageIsText=true" : ""));
+
+		{
+			url = String(GetNode() + "burst?requestType=" +
+				(amountNQT.getLargeIntValue() > 0 ? "sendMoney" : "sendMessage") +
+				"&recipient=" + ensureAccountRS(recipient) +
+				(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
+				(amountNQT.getLargeIntValue() > 0 ? "&amountNQT=" + amountNQT : String::empty) +
+				(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : String::empty) +
+				(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) + "&messageIsText=true" : String::empty));
+		}
 	}
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
@@ -1053,7 +1097,7 @@ String BurstKit::sendMoneyMulti( // Send the same amount of BURST to up to 128 r
 	}
 	String recipientStr = recipientStrArray.joinIntoString(";");
 
-	String url(host + "burst?requestType=sendMoneyMulti" +
+	String url(GetNode() + "burst?requestType=sendMoneyMulti" +
 		"&recipients=" + recipientStr);
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
@@ -1067,7 +1111,7 @@ String BurstKit::sendMoneyMultiSame( // Send the same amount of BURST to up to 1
 	const unsigned int index)
 {
 	String recipientStr = recipients.joinIntoString(";");
-	String url(host + "burst?requestType=sendMoneyMultiSame" +
+	String url(GetNode() + "burst?requestType=sendMoneyMultiSame" +
 		"&recipients=" + recipientStr + 
 		"&amountNQT=" + amountNQT);
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
@@ -1076,8 +1120,8 @@ String BurstKit::sendMoneyMultiSame( // Send the same amount of BURST to up to 1
 String BurstKit::readMessage( // Get a message given a transaction ID.
 	String transaction) // is the transaction ID of the message	
 {
-	return GetUrlStr(host + "burst?requestType=readMessage" +
-		(transaction.isNotEmpty() ? "&transaction=" + transaction : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=readMessage" +
+		(transaction.isNotEmpty() ? "&transaction=" + transaction : String::empty));
 }
 /*
 String BurstKit::sendMoneyEscrow(
@@ -1100,20 +1144,20 @@ String BurstKit::sendMoneyEscrow(
 	String deadlineMinutes,
 	bool broadcast)
 {
-	String url(host + "burst?requestType=sendMoneyEscrow" +
-		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : "") +
-		(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) : "") +
-		(messageIsText.isNotEmpty() ? "&messageIsText=" + messageIsText : "") +
-		(messageToEncrypt.isNotEmpty() ? "&messageToEncrypt=" + messageToEncrypt : "") +
-		(messageToEncryptIsText.isNotEmpty() ? "&messageToEncryptIsText=" + messageToEncryptIsText : "") +
-		(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : "") +
-		(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : "") +
-		(messageToEncryptToSelf.isNotEmpty() ? "&messageToEncryptToSelf=" + messageToEncryptToSelf : "") +
-		(messageToEncryptToSelfIsText.isNotEmpty() ? "&messageToEncryptToSelfIsText=" + messageToEncryptToSelfIsText : "") +
-		(encryptToSelfMessageData.isNotEmpty() ? "&encryptToSelfMessageData=" + encryptToSelfMessageData : "") +
-		(encryptToSelfMessageNonce.isNotEmpty() ? "&encryptToSelfMessageNonce=" + encryptToSelfMessageNonce : "") +
-		(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
-		(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : ""));
+	String url(GetNode() + "burst?requestType=sendMoneyEscrow" +
+		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : String::empty) +
+		(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) : String::empty) +
+		(messageIsText.isNotEmpty() ? "&messageIsText=" + messageIsText : String::empty) +
+		(messageToEncrypt.isNotEmpty() ? "&messageToEncrypt=" + messageToEncrypt : String::empty) +
+		(messageToEncryptIsText.isNotEmpty() ? "&messageToEncryptIsText=" + messageToEncryptIsText : String::empty) +
+		(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : String::empty) +
+		(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : String::empty) +
+		(messageToEncryptToSelf.isNotEmpty() ? "&messageToEncryptToSelf=" + messageToEncryptToSelf : String::empty) +
+		(messageToEncryptToSelfIsText.isNotEmpty() ? "&messageToEncryptToSelfIsText=" + messageToEncryptToSelfIsText : String::empty) +
+		(encryptToSelfMessageData.isNotEmpty() ? "&encryptToSelfMessageData=" + encryptToSelfMessageData : String::empty) +
+		(encryptToSelfMessageNonce.isNotEmpty() ? "&encryptToSelfMessageNonce=" + encryptToSelfMessageNonce : String::empty) +
+		(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : String::empty) +
+		(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty));
 
 	if (GetUINT64(feeNQT) < 200000000 && referencedTransactionFullHash.isNotEmpty()) // 2 BURST for transactions that make use of referencedTransactionFullHash property when creating a new transaction.
 		feeNQT = "200000000";
@@ -1142,20 +1186,20 @@ String BurstKit::sendMessage( // Create an Arbitrary Message transaction. POST o
 	const unsigned int index)
 {
 	recipientPublicKey = GetRecipientPublicKey(recipient); // recipientPublicKey.isEmpty() && recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
-	String url(host + "burst?requestType=sendMessage" +
-		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : "") +
-		(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) : "") +
-		(messageIsText.isNotEmpty() ? "&messageIsText=" + messageIsText : "") +
-		(messageToEncrypt.isNotEmpty() ? "&messageToEncrypt=" + messageToEncrypt : "") +
-		(messageToEncryptIsText.isNotEmpty() ? "&messageToEncryptIsText=" + messageToEncryptIsText : "") +
-		(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : "") +
-		(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : "") +
-		(messageToEncryptToSelf.isNotEmpty() ? "&messageToEncryptToSelf=" + messageToEncryptToSelf : "") +
-		(messageToEncryptToSelfIsText.isNotEmpty() ? "&messageToEncryptToSelfIsText=" + messageToEncryptToSelfIsText : "") +
-		(encryptToSelfMessageData.isNotEmpty() ? "&encryptToSelfMessageData=" + encryptToSelfMessageData : "") +
-		(encryptToSelfMessageNonce.isNotEmpty() ? "&encryptToSelfMessageNonce=" + encryptToSelfMessageNonce : "") +
-		(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : "") +
-		(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : ""));
+	String url(GetNode() + "burst?requestType=sendMessage" +
+		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : String::empty) +
+		(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) : String::empty) +
+		(messageIsText.isNotEmpty() ? "&messageIsText=" + messageIsText : String::empty) +
+		(messageToEncrypt.isNotEmpty() ? "&messageToEncrypt=" + messageToEncrypt : String::empty) +
+		(messageToEncryptIsText.isNotEmpty() ? "&messageToEncryptIsText=" + messageToEncryptIsText : String::empty) +
+		(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : String::empty) +
+		(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : String::empty) +
+		(messageToEncryptToSelf.isNotEmpty() ? "&messageToEncryptToSelf=" + messageToEncryptToSelf : String::empty) +
+		(messageToEncryptToSelfIsText.isNotEmpty() ? "&messageToEncryptToSelfIsText=" + messageToEncryptToSelfIsText : String::empty) +
+		(encryptToSelfMessageData.isNotEmpty() ? "&encryptToSelfMessageData=" + encryptToSelfMessageData : String::empty) +
+		(encryptToSelfMessageNonce.isNotEmpty() ? "&encryptToSelfMessageNonce=" + encryptToSelfMessageNonce : String::empty) +
+		(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : String::empty) +
+		(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty));
 
 	if (GetUINT64(feeNQT) < 200000000 && referencedTransactionFullHash.isNotEmpty()) // 2 BURST for transactions that make use of referencedTransactionFullHash property when creating a new transaction.
 		feeNQT = "200000000";
@@ -1164,13 +1208,13 @@ String BurstKit::sendMessage( // Create an Arbitrary Message transaction. POST o
 
 String BurstKit::suggestFee() // Get a cheap, standard, and priority fee. 
 {
-	return GetUrlStr(host + "burst?requestType=suggestFee");
+	return GetUrlStr(GetNode() + "burst?requestType=suggestFee");
 }
 
 String BurstKit::getRewardRecipient(
 	String account) // is the account ID.
 {
-	return GetUrlStr(host + "burst?requestType=getRewardRecipient&account=" + ensureAccountRS(account));
+	return GetUrlStr(GetNode() + "burst?requestType=getRewardRecipient&account=" + ensureAccountRS(account));
 }
 
 String BurstKit::setRewardRecipient( // Set Reward recipient is used to set the reward recipient of a given account. 
@@ -1181,8 +1225,8 @@ String BurstKit::setRewardRecipient( // Set Reward recipient is used to set the 
 	const unsigned int index)
 {
 	String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
-	String url(host + "burst?requestType=setRewardRecipient" +
-		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : "") +
+	String url(GetNode() + "burst?requestType=setRewardRecipient" +
+		(recipient.isNotEmpty() ? "&recipient=" + ensureAccountRS(recipient) : String::empty) +
 		(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) );
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
@@ -1193,22 +1237,22 @@ String BurstKit::getBlock( // Note: block overrides height which overrides times
 	String timestamp, // is the timestamp(in seconds since the genesis block) of the block(optional if height provided)
 	String includeTransactions) // is true to include transaction details(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getBlock" +
-		(block.isNotEmpty() ? "&block=" + block : "") +
-		(height.isNotEmpty() ? "&height=" + height : "") +
-		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : "") +
-		(includeTransactions.isNotEmpty() ? "&includeTransactions=" + includeTransactions : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getBlock" +
+		(block.isNotEmpty() ? "&block=" + block : String::empty) +
+		(height.isNotEmpty() ? "&height=" + height : String::empty) +
+		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+		(includeTransactions.isNotEmpty() ? "&includeTransactions=" + includeTransactions : String::empty));
 }
 
 String BurstKit::getBlockId( // Get a block ID given a block height.
 	String height) // is the block height
 {
-	return GetUrlStr(host + "burst?requestType=getBlockId&height=" + height);
+	return GetUrlStr(GetNode() + "burst?requestType=getBlockId&height=" + height);
 }
 
 String BurstKit::getBlockchainStatus() // Get the blockchain status. 
 {
-	return GetUrlStr(host + "burst?requestType=getBlockchainStatus");
+	return GetUrlStr(GetNode() + "burst?requestType=getBlockchainStatus");
 }
 
 String BurstKit::getBlocks( // Get blocks from the blockchain in reverse block height order.
@@ -1216,71 +1260,71 @@ String BurstKit::getBlocks( // Get blocks from the blockchain in reverse block h
 	String lastIndex, // is the last block to retrieve(optional, default is firstIndex + 99)
 	String includeTransactions) // is true to include transaction details(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getBlocks" +
-		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : "") +
-		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : "") +
-		(includeTransactions.isNotEmpty() ? "&includeTransactions=" + includeTransactions : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getBlocks" +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+		(includeTransactions.isNotEmpty() ? "&includeTransactions=" + includeTransactions : String::empty));
 }
 
 String BurstKit::getConstants() // Get all defined constants. 
 {
-	return GetUrlStr(host + "burst?requestType=getConstants");
+	return GetUrlStr(GetNode() + "burst?requestType=getConstants");
 }
 
 String BurstKit::getECBlock( // Get Economic Cluster block data.  Note: If timestamp is more than 15 seconds before the timestamp of the last block on the blockchain, errorCode 4 is returned.
 	String timestamp) // is the timestamp(in seconds since the genesis block) of the EC block(optional, default (or zero) is the current timestamp)
 {
-	return GetUrlStr(host + "burst?requestType=getECBlock&timestamp=" + timestamp);
+	return GetUrlStr(GetNode() + "burst?requestType=getECBlock&timestamp=" + timestamp);
 }
 
 String BurstKit::getMiningInfo() // Get Mining Info
 {
-	return GetUrlStr(host + "burst?requestType=getMiningInfo");
+	return GetUrlStr(GetNode() + "burst?requestType=getMiningInfo");
 }
 
 String BurstKit::getMyInfo() // Get hostname and address of the requesting node. 
 {
-	return GetUrlStr(host + "burst?requestType=getMyInfo");
+	return GetUrlStr(GetNode() + "burst?requestType=getMyInfo");
 }
 
 String BurstKit::getPeer( // Get information about a given peer. 
 	String peer) // is the IP address or domain name of the peer(plus optional port)
 {
-	return GetUrlStr(host + "burst?requestType=getPeer&peer=" + peer);
+	return GetUrlStr(GetNode() + "burst?requestType=getPeer&peer=" + peer);
 }
 
 String BurstKit::getPeers( // Get a list of peer IP addresses.  Note: If neither active nor state is specified, all known peers are retrieved. 
 	String active, // is true for active(not NON_CONNECTED) peers only(optional, if true overrides state)
 	String state) // is the state of the peers, one of NON_CONNECTED, CONNECTED, or DISCONNECTED(optional)
 {
-	return GetUrlStr(host + "burst?requestType=getPeers" +
-		(active.isNotEmpty() ? "&active=" + active : "") +
-		(state.isNotEmpty() ? "&state=" + state : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getPeers" +
+		(active.isNotEmpty() ? "&active=" + active : String::empty) +
+		(state.isNotEmpty() ? "&state=" + state : String::empty));
 }
 
 String BurstKit::getTime() // Get the current time. 
 {
-	return GetUrlStr(host + "burst?requestType=getTime");
+	return GetUrlStr(GetNode() + "burst?requestType=getTime");
 }
 
 String BurstKit::getState( // Get the state of the server node and network. 
 	String includeCounts) // is true if the fields beginning with numberOf... are to be included(optional); password protected like the Debug Operations if true.
 {
-	return GetUrlStr(host + "burst?requestType=getState" +
-		(includeCounts.isNotEmpty() ? "&includeCounts=" + includeCounts : ""));
+	return GetUrlStr(GetNode() + "burst?requestType=getState" +
+		(includeCounts.isNotEmpty() ? "&includeCounts=" + includeCounts : String::empty));
 }
 
 String BurstKit::longConvert( // Converts an ID to the signed long integer representation used internally. 
 	String id) // is the numerical ID, in decimal form but equivalent to an 8-byte unsigned integer as produced by SHA-256 hashing
 {
-	return GetUrlStr(host + "burst?requestType=longConvert&id=" + id);
+	return GetUrlStr(GetNode() + "burst?requestType=longConvert&id=" + id);
 }
 
 String BurstKit::rsConvert( // Get both the Reed-Solomon account address and the account number given an account ID. 
 	String account) // is the account ID (either RS address or number)
 { // implemented local
-	String rs(account.containsOnly("0123456789") ? "" : account);
-	String id(account.containsOnly("0123456789") ? account : "");;
+	String rs(account.containsOnly("0123456789") ? String::empty : account);
+	String id(account.containsOnly("0123456789") ? account : String::empty);;
 
 	BurstAddress burstAddress;
 	if (rs.isEmpty())
@@ -1288,8 +1332,128 @@ String BurstKit::rsConvert( // Get both the Reed-Solomon account address and the
 	else id = String(burstAddress.decode(account));
 
 	return String("{\"accountRS\":\"" + rs + "\", \"account\" : \"" + id + "\"}");		
-//	return GetUrlStr(host + "burst?requestType=rsConvert&account=" + account);
+//	return GetUrlStr(GetNode() + "burst?requestType=rsConvert&account=" + account);
 }
+
+String BurstKit::getAsset( // Get asset information given an asset ID. 
+	const String asset) // is the ID of the asset
+{
+	String url(GetNode() + "burst?requestType=getAsset" +
+		"&asset=" + asset);
+	return GetUrlStr(url);
+}
+
+String BurstKit::transferAsset( // Get the state of the server node and network. 
+	const String recipient, // is the recipient account ID
+	const String asset, // is the ID of the asset being transferred
+	const String quantityQNT, // is the amount(in QNT) of the asset being transferred,
+	const String feeNQT,
+	const String deadlineMinutes,
+	bool broadcast,
+	const unsigned int index)
+{
+	String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
+	String url(GetNode() + "burst?requestType=transferAsset" +
+		"&recipient=" + ensureAccountRS(recipient) +
+		(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
+		(asset.isNotEmpty() ? "&asset=" + asset : String::empty) +
+		(quantityQNT.isNotEmpty() ? "&quantityQNT=" + quantityQNT : String::empty));
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
+}
+
+String BurstKit::issueAsset( // Create an asset on the exchange
+	const String name, // is the name of the asset
+	const String description, // is the url - encoded description of the asset in UTF - 8 with a maximum length of 1000 bytes(optional)
+	const String quantityQNT, // is the total amount(in QNT) of the asset in existence
+	const String decimals, // is the number of decimal places used by the asset(optional, zero default)
+	const String feeNQT,
+	const String deadlineMinutes,
+	bool broadcast,
+	const unsigned int index)
+{
+	String url(GetNode() + "burst?requestType=issueAsset" +
+		"&name=" + name +
+		(description.isNotEmpty() ? "&description=" + description : String::empty) +
+		"&quantityQNT=" + quantityQNT +
+		(decimals.isNotEmpty() ? "&decimals=" + decimals : String::empty));
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
+}
+
+String BurstKit::getAssetAccounts( // Get trades associated with a given asset and/or account in reverse block height order. 
+	const String asset, // is the asset ID
+	const String height, // is the height of the blockchain to determine the accounts(optional, default is last block)
+	const String firstIndex, // is a zero - based index to the first account to retrieve(optional)
+	const String lastIndex) // is a zero - based index to the last account to retrieve(optional)
+{
+	String url(GetNode() + "burst?requestType=getAssetAccounts" +
+		"&asset=" + asset +
+		(height.isNotEmpty() ? "&height=" + height : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty));
+	return GetUrlStr(url);
+}
+
+String BurstKit::getTrades( // Get trades associated with a given asset and/or account in reverse block height order. 
+	const String asset, // is the asset ID
+	const String account, // is the account ID(optional if asset provided)
+	const String firstIndex, // is a zero - based index to the first trade to retrieve(optional)
+	const String lastIndex, // is a zero - based index to the last trade to retrieve(optional)
+	const String includeAssetInfo) // is true if the decimals and name fields are to be included(optional)
+{
+	String url(GetNode() + "burst?requestType=getTrades" +
+		"&asset=" + asset +
+		(account.isNotEmpty() ? "&account=" + ensureAccountRS(account) : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+		(includeAssetInfo.isNotEmpty() ? "&includeAssetInfo=" + includeAssetInfo : String::empty));
+	return GetUrlStr(url);
+}
+
+String BurstKit::getAssetsByIssuer( // Get trades associated with a given asset and/or account in reverse block height order. 
+	const String account, // is the account ID
+	const String firstIndex, // is a zero - based index to the first trade to retrieve(optional)
+	const String lastIndex) // is a zero - based index to the last trade to retrieve(optional)
+{
+	String url(GetNode() + "burst?requestType=getAssetsByIssuer" +
+		(account.isNotEmpty() ? "&account=" + ensureAccountRS(account) : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty));
+	return GetUrlStr(url);
+}
+
+
+String BurstKit::placeAskOrder( // Place an asset order
+	const String asset, // is the asset ID of the asset being ordered
+	const String quantityQNT, // is the amount(in QNT) of the asset being ordered
+	const String priceNQT, // is the bid / ask price(in NQT)
+	const String feeNQT,
+	const String deadlineMinutes,
+	bool broadcast,
+	const unsigned int index)
+{
+	String url(GetNode() + "burst?requestType=placeAskOrder" +
+		"&asset=" + asset +
+		"&quantityQNT=" + quantityQNT +
+		"&priceNQT=" + priceNQT);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
+}
+
+String BurstKit::placeBidOrder( // Place an asset order
+	const String asset, // is the asset ID of the asset being ordered
+	const String quantityQNT, // is the amount(in QNT) of the asset being ordered
+	const String priceNQT, // is the bid / ask price(in NQT)
+	const String feeNQT,
+	const String deadlineMinutes,
+	bool broadcast,
+	const unsigned int index)
+{
+	String url(GetNode() + "burst?requestType=placeBidOrder" +
+		"&asset=" + asset +
+		"&quantityQNT=" + quantityQNT +
+		"&priceNQT=" + priceNQT);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
+}
+
 
 #if BURSTKIT_SHABAL == 1
 unsigned int BurstKit::Shabal256_ccID()

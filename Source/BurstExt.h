@@ -78,14 +78,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class BurstExt : public BurstKit
 {
 public:
-	BurstExt(String hostUrl = "https://wallet.dev.burst-test.net:8125/"); // default on testnet
+	BurstExt(String hostUrl = US_NET); // default on testnet
 	~BurstExt();
 
-	void SetNode(String hostUrl);
-	void SetSecretPhrase(const String passphrase, const unsigned int index);
+	String NodeHop(const bool force = true);
+	unsigned int GetNodeCount();
+	void EnableNodeHop(unsigned int maxHopNodeRequests);
 
-	String GetLastError(int &errorCode);
-	void SetError(int errorCode, String msg);
+
+	String broadcastTransaction(String signedTransactionBytesStrHex) override;
+	String GetUrlStr(const String url) override;
 
 	// CloudBurst non-blocking functions
 	void ThreadpoolCloud();
@@ -179,6 +181,11 @@ public:
 private:
 	HashMap<String, BurstJob*> jobs;
 	ScopedPointer<ThreadPool> threadpoolCloud;
+
+	StringArray api_peers_whitelist;
+	StringArray api_peers_blacklist;
+	unsigned int nodeHopCount;
+	unsigned int maxHopNodeRequests;
 
 	struct MTX
 	{
