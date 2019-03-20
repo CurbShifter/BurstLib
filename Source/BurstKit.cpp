@@ -828,16 +828,31 @@ String BurstKit::getAccountTransactionIds( // Get the transaction IDs associated
 	String subtype, // is the subtype of transactions to retrieve(optional)
 	String firstIndex, // is the a zero - based index to the first transaction ID to retrieve(optional)
 	String lastIndex, // is the a zero - based index to the last transaction ID to retrieve(optional)
-	String numberOfConfirmations) // is the required number of confirmations per transaction(optional)
+	String numberOfConfirmations, // is the required number of confirmations per transaction(optional)
+	bool includeIndirect)
 {
-	return GetUrlStr(GetNode() + "burst?requestType=getAccountTransactionIds" +
+	String r = GetUrlStr(GetNode() + "burst?requestType=getAccountTransactionIds" +
 		"&account=" + ensureAccountRS(account) + 
 		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) + 
 		(type.isNotEmpty() ? "&type=" + type : String::empty) +
 		(subtype.isNotEmpty() ? "&subtype=" + subtype : String::empty) +
 		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
 		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
-		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty) );
+		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty) +
+		(includeIndirect ? "&includeIndirect=true" : String::empty) );
+
+	if (r.contains("includeIndirect\\\"param not known")) // resolve includeIndirect pre BRS 2.3.1
+	{
+		r = GetUrlStr(GetNode() + "burst?requestType=getAccountTransactionIds" +
+			"&account=" + ensureAccountRS(account) +
+			(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+			(type.isNotEmpty() ? "&type=" + type : String::empty) +
+			(subtype.isNotEmpty() ? "&subtype=" + subtype : String::empty) +
+			(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+			(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+			(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty));
+	}
+	return r;
 }
 
 String BurstKit::getAccountPublicKey( // Get the public key associated with an account ID. 
@@ -853,16 +868,32 @@ String BurstKit::getAccountTransactions( // Get the transactions associated with
 	String subtype, // is the subtype of transactions to retrieve(optional)
 	String firstIndex, // is the a zero - based index to the first transaction ID to retrieve(optional)
 	String lastIndex, // is the a zero - based index to the last transaction ID to retrieve(optional)
-	String numberOfConfirmations) // is the required number of confirmations per transaction(optional)
+	String numberOfConfirmations, // is the required number of confirmations per transaction(optional)
+	bool includeIndirect)
 {
-	return GetUrlStr(GetNode() + "burst?requestType=getAccountTransactions" +
+	String r = GetUrlStr(GetNode() + "burst?requestType=getAccountTransactions" +
 		"&account=" + ensureAccountRS(account) +
 		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
 		(type.isNotEmpty() ? "&type=" + type : String::empty) +
 		(subtype.isNotEmpty() ? "&subtype=" + subtype : String::empty) +
 		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
 		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
-		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty));
+		(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty) +
+		(includeIndirect ? "&includeIndirect=true" : String::empty) );
+
+	if (r.contains("includeIndirect\\\"param not known")) // resolve includeIndirect pre BRS 2.3.1
+	{
+		r = GetUrlStr(GetNode() + "burst?requestType=getAccountTransactions" +
+			"&account=" + ensureAccountRS(account) +
+			(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+			(type.isNotEmpty() ? "&type=" + type : String::empty) +
+			(subtype.isNotEmpty() ? "&subtype=" + subtype : String::empty) +
+			(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+			(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+			(numberOfConfirmations.isNotEmpty() ? "&numberOfConfirmations=" + numberOfConfirmations : String::empty));
+	}
+
+	return r;
 }
 
 String BurstKit::setAccountInfo( // Set account information. POST only. Refer to Create Transaction Request for common parameters. 

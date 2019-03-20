@@ -24,6 +24,9 @@ Examples showing the usage of BurstLib
 #include "BurstLib.h"
 #include "BurstLib.c"
 
+
+
+#include <ctime>
 #include <string>
 #include <iostream>
 #include <vector>
@@ -178,6 +181,46 @@ void makeCoupon(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib
 		else std::cout << "failed to create valid coupon" << std::endl;
 	}
 	else std::cout << "failed to create transaction" << std::endl;
+}
+
+void shabaltest(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib)
+{
+	std::clock_t begin = std::clock();
+
+	char inbuf[64];
+	memset(&inbuf[0], 0, sizeof(char) * 64);
+	sprintf(&inbuf[0], "12345678901234567890123456789012345678901234567890");
+	int offset = 0;
+	int len = 64;
+	char dst[32];
+	memset(&dst[0], 0, sizeof(char) * 32);
+
+	//int t = 1024;// *128;
+	//for (int i = 0; i < t; i++)
+	{
+		unsigned int cc = burstLib.Shabal256_ccID(apiHandle);
+	//	burstLib.Shabal256_reset(apiHandle, cc);
+		burstLib.Shabal256_update(apiHandle, cc, &inbuf[0], offset, len);
+		burstLib.Shabal256_digest(apiHandle, cc, &dst[0]);
+	}
+	// https://hashes.org/gen.php -> SHABAL256
+	// 1234 -> b1335c97df0159e5597378655791b7cf1f46f60835d5f35343eaa1ed63db3493  ±3\—ßYåYsxeW‘·ÏFö
+	// $HEX[0000000000000000] -> 512fd2962b2b798bf331a074a93cb55d3fb4387119bfcee60fe291e812dbb7fc
+	// $HEX[0123456789ABCDEF] -> 8473373a841654334022fe047d9f16d640162711d4c810b0989d6bc158600613
+	//
+	// "512fd2962b2b798bf331a074a93cb55d3fb4387119bfcee60fe291e812dbb7fc" -> d3deb90eecafce16ef8b45bf5c4af778728c5816b47aab0fbc9b0ad6bff6c381
+	// $HEX[512fd2962b2b798bf331a074a93cb55d3fb4387119bfcee60fe291e812dbb7fc] -> 3f924da0ea209f428dd25dd2418f29324bf2b8be421dfb0a7a6954d0bea0db79
+	//
+	// $HEX[0000000000000000000000000000000000000000000000000000000000000000] -> 1a032cb661c199b6afa594ea6ba0d646c789b263c87af247e211ef14f0f21e0b
+	// 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -> 2271f82522a7c60e05b2b61d454eb34b646fcd4756799c49fca1c27f3dd27e1b
+	clock_t end = clock();
+	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+
+	std::cout << "in :" << &inbuf[0] << std::endl;
+//	std::cout << std::hex << 12;
+	std::cout << "out:" << &dst[0] << std::endl;
+//	std::cout << std::dec << 1;
+	std::cout << "time sec: " << elapsed_secs << std::endl;
 }
 
 void cloudDownload(const burstlibPtr &apiHandle, BurstLib_FunctionHandles &burstLib,
@@ -349,9 +392,12 @@ int main(int argc, char* argv[])
 	BurstLib_FunctionHandles burstLib;
 	if (LoadLib(&dll_handle, apiHandle, burstLib) && allArgs.size() > 1)
 	{
-		if (allArgs[1].compare("download") == 0 && allArgs.size() > 4)
+		if (allArgs[1].compare("shabaltest") == 0)
+			shabaltest(apiHandle, burstLib);
+
+		else if (allArgs[1].compare("download") == 0 && allArgs.size() > 4)
 			cloudDownload(apiHandle, burstLib, allArgs[2].c_str(), allArgs[3].c_str(), allArgs[4].c_str());
-				
+
 		else if (allArgs[1].compare("upload") == 0 && allArgs.size() > 7)
 			cloudUpload(apiHandle, burstLib, allArgs[2].c_str(), allArgs[3].c_str(), allArgs[4].c_str(), allArgs[5].c_str(), allArgs[6].c_str(), allArgs[7].c_str());
 

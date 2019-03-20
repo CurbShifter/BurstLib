@@ -33,7 +33,7 @@ public:
 
 	String encode(String plain);
 	String encode(uint64 plain);
-	int64 decode(String cypher_string);
+	uint64 decode(String cypher_string);
 private:
 	int gmult(const int a, const int b);
 	bool is_codeword_valid(const int *codeword);

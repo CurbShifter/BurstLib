@@ -142,7 +142,7 @@ String BurstAddress::encode(String plain)
 	return cypher_string_builder;
 }
 
-int64 BurstAddress::decode(String cypher_string)
+uint64 BurstAddress::decode(String cypher_string)
 {
 	cypher_string = cypher_string.removeCharacters("-");
 	if (cypher_string.startsWithIgnoreCase("BURST") && cypher_string.length() > 17)

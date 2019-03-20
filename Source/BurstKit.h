@@ -107,7 +107,9 @@ public:
 		String subtype = String::empty, // is the subtype of transactions to retrieve(optional)
 		String firstIndex = String::empty, // is the a zero - based index to the first transaction ID to retrieve(optional)
 		String lastIndex = String::empty, // is the a zero - based index to the last transaction ID to retrieve(optional)
-		String numberOfConfirmations = String::empty); // is the required number of confirmations per transaction(optional)
+		String numberOfConfirmations = String::empty, // is the required number of confirmations per transaction(optional)
+		bool includeIndirect = false); // includeIndirect, to include the received multiouts
+
 	String getAccountPublicKey( // Get the public key associated with an account ID. 
 		String account); // is the account ID
 	String getAccountTransactions( // Get the transactions associated with an account in reverse block timestamp order. 
@@ -117,7 +119,8 @@ public:
 		String subtype = String::empty, // is the subtype of transactions to retrieve(optional)
 		String firstIndex = String::empty, // is the a zero - based index to the first transaction ID to retrieve(optional)
 		String lastIndex = String::empty, // is the a zero - based index to the last transaction ID to retrieve(optional)
-		String numberOfConfirmations = String::empty); // is the required number of confirmations per transaction(optional)
+		String numberOfConfirmations = String::empty, // is the required number of confirmations per transaction(optional)
+		bool includeIndirect = false); // includeIndirect, to include the received multiouts
 
 	String setAccountInfo( // Set account information. POST only. Refer to Create Transaction Request for common parameters. 
 		String name, // is the name to associate with the account
