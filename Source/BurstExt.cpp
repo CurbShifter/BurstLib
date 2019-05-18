@@ -657,7 +657,7 @@ String BurstExt::BurstJob::CloudUpload()
 		upload.fileToUpload.loadFileAsData(fileData);
 	}
 
-	MemoryBlock mbIn;
+/*	MemoryBlock mbIn;
 	char zeroByte = 0;
 	mbIn.append(upload.message.toUTF8(), upload.message.length());
 	mbIn.append(&zeroByte, 1);
@@ -666,7 +666,7 @@ String BurstExt::BurstJob::CloudUpload()
 		mbIn.append(filenameData.getData(), filenameData.getSize());
 		mbIn.append(&zeroByte, 1);
 		mbIn.append(fileData.getData(), fileData.getSize());
-	}
+	}*/
 	
 	String uploadFinishMsg;
 	// result is an array with multiple numerical addresses
@@ -983,7 +983,7 @@ String BurstExt::RedeemCoupon(String couponCode, String password)
 
 String BurstExt::ValidateCoupon(String couponCode, String password, bool &valid)
 {
-	String txHex = DecryptCoupon(couponCode, password);
+	String txHex = DecryptCoupon(couponCode, password, true);
 	if (txHex.length() >= 176 * 2 && txHex.containsOnly("ABCDEFabcdef0123456789"))
 	{
 		String txDetail = parseTransaction(txHex, "");
@@ -994,7 +994,7 @@ String BurstExt::ValidateCoupon(String couponCode, String password, bool &valid)
 	return String::empty;
 }
 
-String BurstExt::DecryptCoupon(String couponCode, String password)
+String BurstExt::DecryptCoupon(String couponCode, String password, bool validate)
 {
 	String txHex;
 	MemoryBlock	pwBin(password.toRawUTF8(), password.getNumBytesAsUTF8());
@@ -1014,7 +1014,7 @@ String BurstExt::DecryptCoupon(String couponCode, String password)
 			txBin.insert(decBytes, 64, 96); // insert decrypted signature
 			txHex = String::toHexString(txBin.getData(), txBin.getSize(), 0);
 		}
-		else
+		else if (!validate)
 		{ // for data validation w/o sign
 			MemoryBlock emptySign(64, true);
 			txBin.insert(emptySign.getData(), 64, 96);

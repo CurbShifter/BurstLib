@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "BurstKit.h"
+//#include "CloudBurst.h"
 
 // Search range should be 32767 as absolute max. but 1 day should be enough
 #define SEARCH_RANGE_MINUTES (24*60)
@@ -78,7 +79,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class BurstExt : public BurstKit
 {
 public:
-	BurstExt(String hostUrl = US_NET); // default on testnet
+	BurstExt(String hostUrl = US_NET);
 	~BurstExt();
 
 	String NodeHop(const bool force = true);
@@ -106,7 +107,7 @@ public:
 	String CreateCoupon(String txSignedHex, String password);
 	String RedeemCoupon(String couponHex, String password);
 	String ValidateCoupon(String couponCode, String password, bool &valid);
-	String DecryptCoupon(String couponHex, String password);
+	String DecryptCoupon(String couponHex, String password, bool validate = false);
 	
 	class BurstJob : public ThreadPoolJob, public BurstKit
 	{
@@ -168,6 +169,7 @@ public:
 
 		bool ScrapeAccountTransactions(Array<MemoryBlock> &results, Array<String> &timecodes, String downloadTransactionID);
 		Array<StringArray> SetAttachmentData(MemoryBlock data);
+		Array<MemoryBlock> MakeAttachmentData(MemoryBlock data);
 		MemoryBlock GetAttachmentData(StringArray recipientsArray, int &length_match, unsigned int &crc16_full_match, const bool header = false);		
 
 		int jobType;
