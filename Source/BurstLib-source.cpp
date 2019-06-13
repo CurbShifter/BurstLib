@@ -1,5 +1,6 @@
 #include "BurstKit.cpp"
 #include "BurstExt.cpp"
+#include "CloudBurst.cpp"
 
 #include "crypto/aes.c"
 #include "crypto/blowfish.cpp"

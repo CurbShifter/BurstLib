@@ -36,7 +36,7 @@ using namespace juce;
 class BurstKit
 {
 public:
-	BurstKit(String hostUrl = US_NET, String passPhrase = String::empty);
+	BurstKit(String hostUrl = String::empty, String passPhrase = String::empty);
 	~BurstKit();
 
 	int GetBurstKitVersionNumber();
@@ -45,7 +45,7 @@ public:
 	String GetLastError(int &errorCode);
 	void SetError(int errorCode, String msg);
 	
-	void SetNode(String hostUrl);
+	void SetNode(const String hostUrl, const bool allowNonSSL = true);
 	String GetNode();
 	void SetForceSSL_TSL(const bool force);
 	bool GetForceSSL_TSL();
@@ -56,6 +56,7 @@ public:
 	uint64 GetBalance(const unsigned int index = -1);
 	uint64 GetWalletBalance(const unsigned int index);
 	String GetRecipientPublicKey(const String recipient);
+	uint64 GetAssetBalance(const String assetID, const unsigned int index = -1);
 
 	void SetAccount(const String account);
 	void SetAccountRS(const String reedSolomonIn);
@@ -298,6 +299,42 @@ public:
 		const bool broadcast,
 		const unsigned int index);
 
+	String transferAsset( // Get the state of the server node and network. 
+		const String recipient, // is the recipient account ID
+		const String asset, // is the ID of the asset being transferred
+		const String quantityQNT, // is the amount(in QNT) of the asset being transferred,
+		const String feeNQT,
+		const String deadlineMinutes,
+		const String message,
+		const bool encrypted,
+		const String referencedTransactionFullHash,
+		const bool broadcast,
+		const unsigned int index);
+
+	String getAllAssets(
+		const String firstIndex = String::empty, // is a zero - based index to the first asset to retrieve(optional)
+		const String lastIndex = String::empty, // is a zero - based index to the last asset to retrieve(optional)
+		const String includeCounts = String::empty, // is true if the fields beginning with numberOf... are to be included(optional)
+		const String requireBlock = String::empty, // is the block ID of a block that must be present in the blockchain during execution(optional)
+		const String requireLastBlock = String::empty); // is the block ID of a block that must be last in the blockchain during execution(optional)
+
+	String getAssets(
+		const String assets, // is one the multiple asset IDs, comma separated
+		const String includeCounts = String::empty, // is true if the fields beginning with numberOf... are to be included(optional)
+		const String requireBlock = String::empty, // is the block ID of a block that must be present in the blockchain during execution(optional)
+		const String requireLastBlock = String::empty); // is the block ID of a block that must be last in the blockchain during execution(optional)
+
+	String getAssetTransfers(
+		const String asset,// is the asset ID(optional),
+		const String account = String::empty,// is the account ID(optional if asset provided),
+		const String timestamp = String::empty,// is the earliest transfer(in seconds since the genesis block) to retrieve(optional, does not apply to expected transfers),
+		const String firstIndex = String::empty,// is a zero - based index to the first transfer to retrieve(optional, does not apply to expected transfers),
+		const String lastIndex = String::empty,// is a zero - based index to the last transfer to retrieve(optional, does not apply to expected transfers),
+		const String includeAssetInfo = String::empty,// is true if the decimals and name fields are to be included(optional, does not apply to expected transfers),
+		const String requireBlock = String::empty,// is the block ID of a block that must be present in the blockchain during execution(optional),
+		const String requireLastBlock = String::empty);// is the block ID of a block that must be last in the blockchain during execution(optional),
+		
+
 	String issueAsset( // Create an asset on the exchange
 		const String name, // is the name of the asset
 		const String description, // is the url - encoded description of the asset in UTF - 8 with a maximum length of 1000 bytes(optional)
@@ -393,13 +430,14 @@ public:
 	String ensureAccountAlias(String str);
 	String ensureAccountRS(String str);
 	String ensureAccountID(String str);
-	String getAccountAliases(String str);
+	String getAccountAliases(String str, const bool newestFirst = false);
 
 	virtual String GetUrlStr(const String url);
 	String GetSecretPhraseString(const unsigned int index = 0);
+
+	void CalcPubKeys(const MemoryBlock pw, String &pubKey_hex, String &pubKey_b64, String &addressID);
 private:
 	MemoryBlock GetSecretPhrase(const unsigned int index = 0);
-	void CalcPubKeys(const MemoryBlock pw, String &pubKey_hex, String &pubKey_b64, String &addressID);
 	String ConvertPubKeyToNumerical(const MemoryBlock pubKey);
 
 
@@ -497,12 +535,6 @@ sendMoneySubscription
 submitNonce
 subscriptionCancel
 
-
-issueAsset
-transferAsset
-getTrades
-placeAskOrder
-placeBidOrder
 
 getAccountsWithRewardRecipient();
 

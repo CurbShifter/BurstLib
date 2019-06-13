@@ -83,27 +83,38 @@ const char* BurstKit::GetBurstKitVersionString()
 	return burstKitVersionString;
 }
 
-void BurstKit::SetNode(String hostUrl)
+void BurstKit::SetNode(const String hostUrl, const bool allowNonSSL)
 {
 	nodeAddress = hostUrl;
+	if (hostUrl.isEmpty())
+		return;
+
 	if (nodeAddress.endsWithChar('/')) // remove trailing
 		nodeAddress = nodeAddress.substring(0, nodeAddress.length() - 1);
 
+	protocol = "https://";
 	// remove protocol from nodeAddress
 	if (nodeAddress.startsWith("http://"))
+	{
+		protocol = "http://";
 		nodeAddress = nodeAddress.substring(strlen("http://"), nodeAddress.length());
+	}
 	else if (nodeAddress.startsWith("https://"))
+	{
 		nodeAddress = nodeAddress.substring(strlen("https://"), nodeAddress.length());
-	
+	}
+
 	// check protocol
 	if (forceSSL)
 		protocol = "https://";
 	else
-	{ // check if ssl is available. else default back to plain
-		protocol = "https://";
-		String constants = getConstants();
-		if (constants.isEmpty())
-			protocol = "http://";
+	{ 
+		if (allowNonSSL && protocol.compareIgnoreCase("https://") == 0)
+		{ // check if ssl is available. else default back to plain		
+			String v = getMyInfo();
+			if (v.isEmpty())
+				protocol = "http://";
+		}
 	}
 	// refresh account data
 	if (accountData.secretPhrase_enc[0].getSize() > 0)
@@ -118,7 +129,8 @@ void BurstKit::SetNode(String hostUrl)
 void BurstKit::SetForceSSL_TSL(const bool force)
 {
 	forceSSL = force;
-	SetNode(nodeAddress);
+	if (forceSSL)
+		SetNode(nodeAddress);
 }
 
 bool BurstKit::GetForceSSL_TSL()
@@ -242,6 +254,25 @@ void BurstKit::SetAccountRS(const String reedSolomonIn)
 		accountData.reedSolomon = ("BURST-") + accountData.reedSolomon;
 
 	accountData.accountID = GetJSONvalue(getAccount(accountData.reedSolomon), "account");
+}
+
+uint64 BurstKit::GetAssetBalance(const String assetID, const unsigned int index)
+{
+	String accountStr = getAccount(accountData.reedSolomon);
+
+	var jsonStructure;
+	Result r = JSON::parse(accountStr, jsonStructure);
+
+	if (jsonStructure["assetBalances"].isArray())
+	{
+		for (int i = 0; i < jsonStructure["assetBalances"].size(); i++)
+		{
+			if (jsonStructure["assetBalances"][i]["asset"].toString().compare(assetID) == 0)
+			{
+				return jsonStructure["assetBalances"][i]["balanceQNT"].toString().getLargeIntValue();
+			}
+		}
+	}
 }
 
 uint64 BurstKit::GetBalance(const unsigned int index)
@@ -415,7 +446,7 @@ String BurstKit::TxRequestArgs(
 	String feeNQT,
 	String deadlineMinutes)
 {
-	// TODO implement suggest fee
+	// suggest fee
 	String feeNQTstr = feeNQT;
 	if (feeNQT.compareIgnoreCase("cheap") == 0)
 		feeNQTstr = GetJSONvalue(suggestFee(), "cheap");
@@ -468,7 +499,7 @@ String BurstKit::ensureAccountAlias(String str)
 	return str;
 }
 
-String BurstKit::getAccountAliases(String str)
+String BurstKit::getAccountAliases(String str, const bool newestFirst)
 {
 	//int accUnit = DetermineAccountUnit(str);
 	//if (accUnit != 2)
@@ -478,13 +509,24 @@ String BurstKit::getAccountAliases(String str)
 		Result r = JSON::parse(aliases, aliasesJSON);
 		if (aliasesJSON["aliases"].isArray() && aliasesJSON["aliases"].size() > 0)
 		{
-			String aliasNames;
+			StringArray aliasNames;
+			int64 aliasTime;
+			int64 aliasTimeIdx = -1;
 			const int s = aliasesJSON["aliases"].size();
 			for (int i = 0; i < s; i++)
 			{
-				aliasNames += aliasesJSON["aliases"][i]["aliasName"].toString() + (i < s - 1 ? ";" : String::empty);
+				aliasNames.add(aliasesJSON["aliases"][i]["aliasName"].toString());
+				if (aliasTime < (int64)(aliasesJSON["aliases"][i]["timestamp"]))
+				{
+					aliasTime = (aliasesJSON["aliases"][i]["timestamp"]);
+					aliasTimeIdx = i;
+				}
 			}
-			return aliasNames;
+			// move the newest in front
+			if (newestFirst && aliasTimeIdx >= 0 && aliasTimeIdx < aliasNames.size())
+				aliasNames.move(aliasTimeIdx, 0);
+
+			return aliasNames.joinIntoString(";");
 		}
 	}
 	return String::empty;
@@ -1390,6 +1432,105 @@ String BurstKit::transferAsset( // Get the state of the server node and network.
 		(asset.isNotEmpty() ? "&asset=" + asset : String::empty) +
 		(quantityQNT.isNotEmpty() ? "&quantityQNT=" + quantityQNT : String::empty));
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
+}
+
+String BurstKit::transferAsset( // Get the state of the server node and network. 
+	const String recipient, // is the recipient account ID
+	const String asset, // is the ID of the asset being transferred
+	const String quantityQNT, // is the amount(in QNT) of the asset being transferred,
+	const String feeNQT,
+	const String deadlineMinutes,
+	const String message,
+	const bool encrypted,
+	const String referencedTransactionFullHash,
+	const bool broadcast,
+	const unsigned int index)
+{
+	String url;
+	String recipientPublicKey = GetRecipientPublicKey(recipient); // recipient.containsOnly("0123456789ABCDEFabcdef") && recipient.length() == 64 ? recipient : String::empty;
+	if (encrypted && message.isNotEmpty())
+	{
+		String encryptedMessageNonce;
+		String messageToEncryptIsText = ("true"); // is false if the message to encrypt is a hex string, true if the encrypted message is text
+		String encryptedMessageData = encryptTo( // Encrypt a message using AES without sending it.
+			encryptedMessageNonce,
+			recipient, // is the account ID of the recipient.
+			message, // is either UTF - 8 text or a string of hex digits to be compressed and converted into a 1000 byte maximum bytecode then encrypted using AES
+			messageToEncryptIsText); // is false if the message to encrypt is a hex string, true if the encrypted message is text
+
+		url = String(GetNode() + "burst?requestType=transferAsset" +
+				"&recipient=" + ensureAccountRS(recipient) +
+				(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
+				(asset.isNotEmpty() ? "&asset=" + asset : String::empty) +
+				(quantityQNT.getLargeIntValue() > 0 ? "&quantityQNT=" + quantityQNT : String::empty) +
+				(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : String::empty) +
+				(messageToEncryptIsText.isNotEmpty() ? "&messageIsText=" + messageToEncryptIsText : String::empty) +
+				(encryptedMessageData.isNotEmpty() ? "&encryptedMessageData=" + encryptedMessageData : String::empty) +
+				(encryptedMessageNonce.isNotEmpty() ? "&encryptedMessageNonce=" + encryptedMessageNonce : String::empty));
+	}
+	else
+	{
+		url = String(GetNode() + "burst?requestType=transferAsset" +
+				"&recipient=" + ensureAccountRS(recipient) +
+				(recipientPublicKey.isNotEmpty() ? "&recipientPublicKey=" + recipientPublicKey : String::empty) +
+				(asset.isNotEmpty() ? "&asset=" + asset : String::empty) +
+				(quantityQNT.getLargeIntValue() > 0 ? "&quantityQNT=" + quantityQNT : String::empty) +
+				(referencedTransactionFullHash.isNotEmpty() ? "&referencedTransactionFullHash=" + referencedTransactionFullHash : String::empty) +
+				(message.isNotEmpty() ? "&message=" + URL::addEscapeChars(message, true, false) + "&messageIsText=true" : String::empty));
+	}
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
+}
+
+String BurstKit::getAllAssets(
+	const String firstIndex, // is a zero - based index to the first asset to retrieve(optional)
+	const String lastIndex, // is a zero - based index to the last asset to retrieve(optional)
+	const String includeCounts, // is true if the fields beginning with numberOf... are to be included(optional)
+	const String requireBlock, // is the block ID of a block that must be present in the blockchain during execution(optional)
+	const String requireLastBlock) // is the block ID of a block that must be last in the blockchain during execution(optional)
+{
+	String url(GetNode() + "burst?requestType=getAllAssets" +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+		(includeCounts.isNotEmpty() ? "&includeCounts=" + includeCounts : String::empty) +
+		(requireBlock.isNotEmpty() ? "&requireBlock=" + requireBlock : String::empty) +
+		(requireLastBlock.isNotEmpty() ? "&requireLastBlock=" + requireLastBlock : String::empty));
+	return GetUrlStr(url);
+}
+
+String BurstKit::getAssets(
+	const String assets, // asset IDs, comma separated
+	const String includeCounts, // is true if the fields beginning with numberOf... are to be included(optional)
+	const String requireBlock, // is the block ID of a block that must be present in the blockchain during execution(optional)
+	const String requireLastBlock) // is the block ID of a block that must be last in the blockchain during execution(optional)
+{
+	String url(GetNode() + "burst?requestType=getAssets" +
+		("&assets=" + assets.replace(",", "&assets=")) +
+		(includeCounts.isNotEmpty() ? "&includeCounts=" + includeCounts : String::empty) +
+		(requireBlock.isNotEmpty() ? "&requireBlock=" + requireBlock : String::empty) +
+		(requireLastBlock.isNotEmpty() ? "&requireLastBlock=" + requireLastBlock : String::empty));
+	return GetUrlStr(url);
+}
+
+String BurstKit::getAssetTransfers(
+	const String asset,// is the asset ID(optional),
+	const String account,// is the account ID(optional if asset provided),
+	const String timestamp,// is the earliest transfer(in seconds since the genesis block) to retrieve(optional, does not apply to expected transfers),
+	const String firstIndex,// is a zero - based index to the first transfer to retrieve(optional, does not apply to expected transfers),
+	const String lastIndex,// is a zero - based index to the last transfer to retrieve(optional, does not apply to expected transfers),
+	const String includeAssetInfo,// is true if the decimals and name fields are to be included(optional, does not apply to expected transfers),
+	const String requireBlock,// is the block ID of a block that must be present in the blockchain during execution(optional),
+	const String requireLastBlock)// is the block ID of a block that must be last in the blockchain during execution(optional),
+{
+	String url(GetNode() + "burst?requestType=getAssetTransfers" +
+		(asset.isNotEmpty() ? "&asset=" + asset : String::empty) +
+		(account.isNotEmpty() ? "&account=" + account : String::empty) +
+		(timestamp.isNotEmpty() ? "&timestamp=" + timestamp : String::empty) +
+		(firstIndex.isNotEmpty() ? "&firstIndex=" + firstIndex : String::empty) +
+		(lastIndex.isNotEmpty() ? "&lastIndex=" + lastIndex : String::empty) +
+		(includeAssetInfo.isNotEmpty() ? "&includeAssetInfo=" + includeAssetInfo : String::empty) +
+		(requireBlock.isNotEmpty() ? "&requireBlock=" + requireBlock : String::empty) +
+		(requireLastBlock.isNotEmpty() ? "&requireLastBlock=" + requireLastBlock : String::empty));
+	return GetUrlStr(url);
 }
 
 String BurstKit::issueAsset( // Create an asset on the exchange

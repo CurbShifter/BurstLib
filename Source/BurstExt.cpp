@@ -936,7 +936,7 @@ String BurstExt::CreateCoupon(String txSignedHex, String password)
 	String shaPwHex = SHA256(pwBin).toHexString().removeCharacters(" ");
 	BLOWFISH bf(shaPwHex.toStdString());
 
-	int retry = 5;
+	int retry = 10;
 	String base64coupon;
 	while (txSignedHex.length() >= (176 * 2) && base64coupon.isEmpty() && --retry > 0)
 	{
@@ -962,7 +962,10 @@ String BurstExt::CreateCoupon(String txSignedHex, String password)
 		String details = ValidateCoupon(base64coupon, password, valid);
 
 		if (!valid) // erase if code is not valid
+		{
+			Time::waitForMillisecondCounter(Time::getApproximateMillisecondCounter() + 500);
 			base64coupon.clear();
+		}
 
 		delete[] encBytes;
 	}

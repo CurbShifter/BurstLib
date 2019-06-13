@@ -79,7 +79,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class BurstExt : public BurstKit
 {
 public:
-	BurstExt(String hostUrl = US_NET);
+	BurstExt(String hostUrl = String::empty);
 	~BurstExt();
 
 	String NodeHop(const bool force = true);
