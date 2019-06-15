@@ -1626,6 +1626,70 @@ String BurstKit::placeBidOrder( // Place an asset order
 	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
 }
 
+String BurstKit::createATProgram(
+	const String name,
+	const String description,
+	const String creationBytes,
+	const String code,
+	const String data,
+	const String dpages,
+	const String cspages,
+	const String uspages,
+	const String minActivationAmountNQT,
+	const String feeNQT,
+	const String deadlineMinutes,
+	bool broadcast,
+	const unsigned int index)
+{
+	String url(GetNode() + "burst?requestType=createATProgram" +
+		"&name=" + name +
+		"&description=" + description +
+		"&creationBytes=" + creationBytes +
+		"&code=" + code +
+		"&data=" + data +
+		"&dpages=" + dpages +
+		"&cspages=" + cspages +
+		"&uspages=" + uspages +
+		"&minActivationAmountNQT=" + minActivationAmountNQT);
+	return CreateTX(url, feeNQT, deadlineMinutes, broadcast, index);
+}
+
+String BurstKit::getAT(
+	const String at)
+{
+	String url(GetNode() + "burst?requestType=getAT" +
+		"&at=" + at);
+	return GetUrlStr(url);
+}
+
+String BurstKit::getATDetails( // same as getAT ?
+	const String at)
+{
+	String url(GetNode() + "burst?requestType=getATDetails" +
+		"&at=" + at);
+	return GetUrlStr(url);
+}
+
+String BurstKit::getATIds()
+{
+	String url(GetNode() + "burst?requestType=getATIds");
+	return GetUrlStr(url);
+}
+String BurstKit::getATLong(
+	const String hexString)
+{
+	String url(GetNode() + "burst?requestType=getATLong" +
+		"&hexString=" + hexString);
+	return GetUrlStr(url);
+}
+
+String BurstKit::getAccountATs(
+	const String account)
+{
+	String url(GetNode() + "burst?requestType=getAccountATs" +
+		"&account=" + account);
+	return GetUrlStr(url);
+}
 
 #if BURSTKIT_SHABAL == 1
 unsigned int BurstKit::Shabal256_ccID()

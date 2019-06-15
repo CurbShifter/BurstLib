@@ -44,15 +44,15 @@ public:
 
 	String GetLastError(int &errorCode);
 	void SetError(int errorCode, String msg);
-	
+
 	void SetNode(const String hostUrl, const bool allowNonSSL = true);
 	String GetNode();
 	void SetForceSSL_TSL(const bool force);
 	bool GetForceSSL_TSL();
-	
+
 	void SetSecretPhrase(const String passphrase, const unsigned int index = 0);
 	void GetWallet(unsigned int index, String &pubKey_hex, String &pubKey_b64, String &reedSolomon, String &addressID);
-	
+
 	uint64 GetBalance(const unsigned int index = -1);
 	uint64 GetWalletBalance(const unsigned int index);
 	String GetRecipientPublicKey(const String recipient);
@@ -167,7 +167,7 @@ public:
 
 	String getBalance( // Get the balance of an account. 
 		String account, // is the account ID
-	//	String includeEffectiveBalance = String::empty, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT(optional
+		//	String includeEffectiveBalance = String::empty, // is true to include effectiveBalanceNXT and guaranteedBalanceNQT(optional
 		String height = String::empty, // is the height to retrieve account balance for, if still available(optional)
 		String requireBlock = String::empty, // is the block ID of a block that must be present in the blockchain during execution(optional)
 		String requireLastBlock = String::empty); // is the block ID of a block that must be last in the blockchain during execution(optional)
@@ -333,7 +333,7 @@ public:
 		const String includeAssetInfo = String::empty,// is true if the decimals and name fields are to be included(optional, does not apply to expected transfers),
 		const String requireBlock = String::empty,// is the block ID of a block that must be present in the blockchain during execution(optional),
 		const String requireLastBlock = String::empty);// is the block ID of a block that must be last in the blockchain during execution(optional),
-		
+
 
 	String issueAsset( // Create an asset on the exchange
 		const String name, // is the name of the asset
@@ -386,6 +386,32 @@ public:
 		String id); // is the numerical ID, in decimal form but equivalent to an 8-byte unsigned integer as produced by SHA-256 hashing
 	String rsConvert( // Get both the Reed-Solomon account address and the account number given an account ID. 
 		String account); // is the account ID (either RS address or number)
+
+	String createATProgram(
+		const String name,
+		const String description,
+		const String creationBytes,
+		const String code,
+		const String data,
+		const String dpages,
+		const String cspages,
+		const String uspages,
+		const String minActivationAmountNQT,
+		const String feeNQT,
+		const String deadlineMinutes,
+		bool broadcast,
+		const unsigned int index);
+	String getAT(
+		const String at);
+	String getATDetails( // same as getAT ?
+		const String at);
+	String getATIds();
+	String getATLong(
+		const String hexString);
+	String getAccountATs(
+		const String account);
+
+
 
 #if BURSTKIT_SHABAL == 1
 	bool m_supportSSE;
@@ -474,41 +500,38 @@ private:
 /*
 To be implemented
 =
-
-cancelAskOrder
-cancelBidOrder
-createATProgram
-
-escrowSign
 generateToken
-getAT
-getATDetails
-getATIds
-getATLong
-getAccountATs
+
+getAccountEscrowTransactions
+getEscrowTransaction
+
+sendMoneyEscrow
+escrowSign
+
+getAccountLessors
+getAccountSubscriptions
+getSubscription
+getSubscriptionsToAccount
+sendMoneySubscription
+subscriptionCancel
+
 getAccountCurrentAskOrderIds
 getAccountCurrentAskOrders
 getAccountCurrentBidOrderIds
 getAccountCurrentBidOrders
-getAccountEscrowTransactions
-getAccountLessors
-getAccountSubscriptions
-getAllAssets
 getAllOpenAskOrders
 getAllOpenBidOrders
 getAllTrades
 getAskOrder
 getAskOrderIds
 getAskOrders
-getAsset
-getAssetAccounts
 getAssetIds
 getAssetTransfers
-getAssets
-getAssetsByIssuer
 getBidOrder
 getBidOrderIds
 getBidOrders
+cancelAskOrder
+cancelBidOrder
 
 dgsDelisting
 dgsDelivery
@@ -524,18 +547,7 @@ getDGSPendingPurchases
 getDGSPurchase
 getDGSPurchases
 
-getEscrowTransaction
-
-getSubscription
-getSubscriptionsToAccount
-
-
-sendMoneyEscrow
-sendMoneySubscription
 submitNonce
-subscriptionCancel
-
-
-getAccountsWithRewardRecipient();
+getAccountsWithRewardRecipient
 
 */
