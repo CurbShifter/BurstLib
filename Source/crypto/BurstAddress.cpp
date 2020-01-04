@@ -21,14 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "BurstAddress.h"
 
-BurstAddress::BurstAddress() : base_32_length(13), base_10_length(20)
+BurstAddress::BurstAddress() : base_32_length(13), base_10_length(20), initial_codeword_length(17)
 {
 	Initialize();
 }
 
 void BurstAddress::Initialize()
 {
-	initial_codeword_length = 17;
 	memset(&initial_codeword[0], 0, sizeof(int) * initial_codeword_length);
 	initial_codeword[0] = 1;
 
@@ -73,21 +72,25 @@ BurstAddress::~BurstAddress()
 {
 }
 
-String BurstAddress::encode(uint64 plain)
+String BurstAddress::encode(uint64 plain, bool addDashes)
 {
-	return encode(String(plain));
+	return encode(String(plain), addDashes);
 }
 
-String BurstAddress::encode(String plain)
+String BurstAddress::encode(String plain, bool addDashes)
 {
 	int length = plain.length();
 	
-	ScopedPointer<int> plain_string_10 = new int[base_10_length];
+	//ScopedPointer<int> plain_string_10 = new int[base_10_length];
+	int plain_string_10_S[20];
+	int *plain_string_10 = &plain_string_10_S[0];
 	for (int i = 0; i < length && i < base_10_length; i++)
 		plain_string_10[i] = (int)plain[i] - (int)'0';
 
 	int codeword_length = 0;
-	ScopedPointer<int> codeword = new int[initial_codeword_length];
+	//ScopedPointer<int> codeword = new int[initial_codeword_length];
+	int codeword_S[17];
+	int* codeword = &codeword_S[0];
 	memset(codeword, 0, sizeof(int) * initial_codeword_length);
 
 	do {  // base 10 to base 32 conversion
@@ -134,7 +137,7 @@ String BurstAddress::encode(String plain)
 		int alphabet_index = codeword[codework_index];		
 		cypher_string_builder.append(alphabet.substring(alphabet_index, alphabet_index + 1), 1);
 
-		if ((i &3) == 3 && i < 13)
+		if (addDashes && (i & 3) == 3 && i < 13)
 			cypher_string_builder.append(String("-"), 1);
 	}
 //	const bool isValidStill = String(decode(cypher_string_builder)).compare(plain) == 0;
@@ -142,7 +145,7 @@ String BurstAddress::encode(String plain)
 	return cypher_string_builder;
 }
 
-uint64 BurstAddress::decode(String cypher_string)
+uint64 BurstAddress::decode(String cypher_string, const bool ignoreCodeWord)
 {
 	cypher_string = cypher_string.removeCharacters("-");
 	if (cypher_string.startsWithIgnoreCase("BURST") && cypher_string.length() > 17)
@@ -161,7 +164,7 @@ uint64 BurstAddress::decode(String cypher_string)
 			continue;
 		}
 
-		if (codeword_length > 16) {
+		if (!ignoreCodeWord && codeword_length > 16) {
 			return 0; // CodewordTooLong
 		}
 
@@ -170,7 +173,7 @@ uint64 BurstAddress::decode(String cypher_string)
 		codeword_length += 1;
 	}
 
-	if ((codeword_length == 17 && !is_codeword_valid(codeword)) || codeword_length != 17)
+	if (!ignoreCodeWord && ((codeword_length == 17 && !is_codeword_valid(codeword)) || codeword_length != 17))
 		return 0; // CodewordInvalid
 
 	int length = base_32_length;

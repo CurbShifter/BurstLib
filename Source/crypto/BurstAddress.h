@@ -31,23 +31,25 @@ public:
 	~BurstAddress();
 	void Initialize();
 
-	String encode(String plain);
-	String encode(uint64 plain);
-	uint64 decode(String cypher_string);
+	BurstAddress & operator=(const BurstAddress &) { return *this; };
+
+	String encode(String plain, bool addDashes = true);
+	String encode(uint64 plain, bool addDashes = true);
+	uint64 decode(String cypher_string, const bool ignoreCodeWord = false);
 private:
 	int gmult(const int a, const int b);
 	bool is_codeword_valid(const int *codeword);
 	uint64 GetUINT64(const String uint64Str);
 	MemoryBlock GetUINT64MemoryBlock(const String uint64Str);
 	
-	int initial_codeword_length;
+	const int initial_codeword_length;
 	int initial_codeword[17];
 	int gexp[4 * 8];
 	int glog[4 * 8];
 	int codeword_map[17];
 	String alphabet;
-	int base_32_length;
-	int base_10_length;
+	const int base_32_length;
+	const int base_10_length;
 };
 
 #endif //BurstAddress_H_INCLUDED

@@ -1,6 +1,9 @@
-#include "BurstKit.cpp"
-#include "BurstExt.cpp"
+#include "BurstKit.cpp" // base interface
+#include "BurstExt.cpp" // extended + base interface
+
 #include "CloudBurst.cpp"
+#include "BurstSocket.cpp"
+#include "BurstCoupon.cpp"
 
 #include "crypto/aes.c"
 #include "crypto/blowfish.cpp"

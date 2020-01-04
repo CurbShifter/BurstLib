@@ -28,16 +28,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace juce;
 
-#define US_NET "wallet.burst-team.us:2083" 
-// "https://wallet1.burst-team.us:2083/"
+#define US_NET "wallet.burst-team.us:2083"
 
 #define FEE_QUANT 735000
+#define BURSTCOIN_GENESIS_EPOCH 1407722400
+#define MAX_TXDATASIZE (1000)
+#define MAX_FEE_SLOTS (1020)
+#define MAX_TX_PER_SLOT 360
 
 class BurstKit
 {
 public:
 	BurstKit(String hostUrl = String::empty, String passPhrase = String::empty);
 	~BurstKit();
+
+	bool IsOnTestNet();
 
 	int GetBurstKitVersionNumber();
 	const char *GetBurstKitVersionString();
@@ -61,6 +66,7 @@ public:
 	void SetAccount(const String account);
 	void SetAccountRS(const String reedSolomonIn);
 	void SetAccountID(const String accountID);
+	String GetAccountPublicKey(const unsigned int index = 0);
 	String GetAccountRS(const unsigned int index = 0);
 	String GetAccountID(const unsigned int index = 0);
 	virtual String GetJSONvalue(const String json, const String key);
@@ -183,12 +189,18 @@ public:
 	String getUnconfirmedTransactionsIds( // Get a list of unconfirmed transaction IDs associated with an account. 
 		String account = String::empty); // is the account ID(optional)
 	String getUnconfirmedTransactions( // Get a list of unconfirmed transactions associated with an account. 
-		String account); // is the account ID(optional)		
+		String account = String::empty); // is the account ID(optional)		
 	String parseTransaction( // Get a transaction object given a (signed or unsigned) transaction bytecode, or re-parse a transaction object. Verify the signature.
 		String transactionBytes, // is the signed or unsigned bytecode of the transaction(optional)
 		String transactionJSON = String::empty); // is the transaction object(optional if transactionBytes is included)		
 	String getTransactionBytes( // Get the bytecode of a transaction. 
 		String transaction); // is the transaction ID		
+
+	String BurstKit::createMessageArgs(
+		const String message,
+		const bool isText = true, // is false if the message to encrypt is a hex string, true if the encrypted message is text
+		const bool encrpyted = false,
+		const String recipient = String::empty);
 
 	String sendMoney( // Send individual amounts of BURST to up to 64 recipients. POST only. Refer to Create Transaction Request for common parameters. 
 		String recipient,
@@ -199,12 +211,13 @@ public:
 		bool broadcast = true,
 		const unsigned int index = 0);
 	String sendMoneyWithMessage(
-		String recipient,
-		String amountNQT,
-		String feeNQT,
-		String deadlineMinutes,
-		String message,
-		bool encrpyted,
+		const String recipient,
+		const String amountNQT,
+		const String feeNQT,
+		const String deadlineMinutes,
+		const String message = String::empty,
+		const bool messageIsText = true,
+		const bool encrpyted = false,
 		String referencedTransactionFullHash = String::empty,
 		bool broadcast = true,
 		const unsigned int index = 0);
@@ -285,7 +298,7 @@ public:
 		const String state = String::empty); // is the state of the peers, one of NON_CONNECTED, CONNECTED, or DISCONNECTED(optional)
 	String getTime(); // Get the current time. 
 	String getState( // Get the state of the server node and network. 
-		String includeCounts); // is true if the fields beginning with numberOf... are to be included(optional); password protected like the Debug Operations if true.
+		const String includeCounts); // is true if the fields beginning with numberOf... are to be included(optional); password protected like the Debug Operations if true.
 
 	String getAsset( // Get asset information given an asset ID. 
 		const String asset); // is the ID of the asset
@@ -368,19 +381,80 @@ public:
 		const String quantityQNT, // is the amount(in QNT) of the asset being ordered
 		const String priceNQT, // is the bid / ask price(in NQT)
 		const String feeNQT,
-		const String deadlineMinutes,
-		bool broadcast,
-		const unsigned int index);
+		const String deadlineMinutes = "1440",
+		const String message = String::empty,
+		const bool messageIsText = true,
+		bool broadcast = true,
+		const unsigned int index = 0);
 
 	String placeBidOrder( // Place an asset order
 		const String asset, // is the asset ID of the asset being ordered
 		const String quantityQNT, // is the amount(in QNT) of the asset being ordered
 		const String priceNQT, // is the bid / ask price(in NQT)
 		const String feeNQT,
+		const String deadlineMinutes = "1440",
+		const String message = String::empty,
+		const bool messageIsText = true,
+		bool broadcast = true,
+		const unsigned int index = 0);
+
+	String getAskOrder(const String order);
+	String getAskOrderIds(
+		const String asset,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getAskOrders(
+		const String asset,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getAccountCurrentAskOrderIds(
+		const String account,
+		const String asset = String::empty,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getAccountCurrentAskOrders(
+		const String account,
+		const String asset = String::empty,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getAllOpenAskOrders(
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String cancelAskOrder(
+		const String order,
+		const String feeNQT,
 		const String deadlineMinutes,
 		bool broadcast,
 		const unsigned int index);
 
+	String getBidOrder(const String order);
+	String getBidOrderIds(
+		const String asset,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getBidOrders(
+		const String asset,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getAccountCurrentBidOrderIds(
+		const String account,
+		const String asset = String::empty,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getAccountCurrentBidOrders(
+		const String account,
+		const String asset = String::empty,
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String getAllOpenBidOrders(
+		const String firstIndex = String::empty,
+		const String lastIndex = String::empty);
+	String cancelBidOrder(
+		const String order,
+		const String feeNQT,
+		const String deadlineMinutes,
+		bool broadcast,
+		const unsigned int index);
 
 	String longConvert( // Converts an ID to the signed long integer representation used internally. 
 		String id); // is the numerical ID, in decimal form but equivalent to an 8-byte unsigned integer as produced by SHA-256 hashing
@@ -411,6 +485,20 @@ public:
 	String getAccountATs(
 		const String account);
 
+	String getAllTrades(
+		const String timestamp,
+		const String firstIndex,
+		const String lastIndex,
+		const String includeAssetInfo);
+	String getAssetIds(
+		const String firstIndex,
+		const String lastIndex);
+	String getAssetTransfers(
+		const String asset,
+		const String account,
+		const String firstIndex,
+		const String lastIndex,
+		const String includeAssetInfo);
 
 
 #if BURSTKIT_SHABAL == 1
@@ -453,15 +541,110 @@ public:
 	String nodeAddress;
 
 	int DetermineAccountUnit(String str);
-	String ensureAccountAlias(String str);
-	String ensureAccountRS(String str);
-	String ensureAccountID(String str);
+	String convertToAlias(String str);
+	String convertToReedSolomon(String str);
+	String convertToAccountID(String str);
 	String getAccountAliases(String str, const bool newestFirst = false);
 
 	virtual String GetUrlStr(const String url);
 	String GetSecretPhraseString(const unsigned int index = 0);
 
 	void CalcPubKeys(const MemoryBlock pw, String &pubKey_hex, String &pubKey_b64, String &addressID);
+
+	static String GetTransactionTypeText(const int type, const int subtype)
+	{
+		String tag;
+		if (type == 0) //String constantsStr = burstKit.getConstants();
+		{
+			if (subtype == 0)
+				tag = "Ordinary Payment";
+			else if (subtype == 1)
+				tag = "Multi-out Payment";
+			else if (subtype == 2)
+				tag = "Multi-out Same Payment";
+		}
+		else if (type == 1)
+		{
+			if (subtype == 0)
+				tag = "Arbitrary Message";
+			else if (subtype == 1)
+				tag = "Alias Assignment";
+			else if (subtype == 2)
+				tag = "Account Info";
+			else if (subtype == 1)
+				tag = "Alias Sell";
+			else if (subtype == 2)
+				tag = "Alias Buy";
+		}
+		else if (type == 2)
+		{
+			if (subtype == 0)
+				tag = "Asset Issuance";
+			else if (subtype == 1)
+				tag = "Asset Transfer";
+			else if (subtype == 2)
+				tag = "Ask Order Placement";
+			else if (subtype == 3)
+				tag = "Bid Order Placement";
+			else if (subtype == 4)
+				tag = "Ask Order Cancellation";
+			else if (subtype == 5)
+				tag = "Bid Order Cancellation";
+		}
+		else if (type == 3)
+		{ // "Digital Goods",
+			if (subtype == 0)
+				tag = "DGS Listing";
+			else if (subtype == 1)
+				tag = "DGS Delisting";
+			else if (subtype == 2)
+				tag = "DGS Price Change";
+			else if (subtype == 3)
+				tag = "DGS Quantity Change";
+			else if (subtype == 4)
+				tag = "DGS Purchase";
+			else if (subtype == 5)
+				tag = "DGS Delivery";
+			else if (subtype == 6)
+				tag = "DGS Feedback";
+			else if (subtype == 7)
+				tag = "DGS Refund";
+		}
+		else if (type == 4)
+		{ // "Account Control",
+			if (subtype == 0)
+				tag = "Account Control Effective Balance Leasing"; // NXT
+		}
+		else if (type == 20)
+		{ // "Burst Mining"
+			if (subtype == 0)
+				tag = "Reward Recipient Assignment";
+		}
+		else if (type == 20)
+		{ // "Advanced Payment";
+			if (subtype == 0)
+				tag = "Escrow Creation";
+			else if (subtype == 1)
+				tag = "Escrow Sign";
+			else if (subtype == 2)
+				tag = "Escrow Result";
+			else if (subtype == 3)
+				tag = "Subscription Subscribe";
+			else if (subtype == 4)
+				tag = "Subscription Cancel";
+			else if (subtype == 5)
+				tag = "Subscription Payment";
+		}
+		else if (type == 22)
+		{ // "Automated Transactions",
+			if (subtype == 0)
+				tag = "AT Creation";
+			else if (subtype == 1)
+				tag = "AT Payment";
+		}
+		return tag;
+	}
+
 private:
 	MemoryBlock GetSecretPhrase(const unsigned int index = 0);
 	String ConvertPubKeyToNumerical(const MemoryBlock pubKey);
@@ -514,24 +697,6 @@ getSubscription
 getSubscriptionsToAccount
 sendMoneySubscription
 subscriptionCancel
-
-getAccountCurrentAskOrderIds
-getAccountCurrentAskOrders
-getAccountCurrentBidOrderIds
-getAccountCurrentBidOrders
-getAllOpenAskOrders
-getAllOpenBidOrders
-getAllTrades
-getAskOrder
-getAskOrderIds
-getAskOrders
-getAssetIds
-getAssetTransfers
-getBidOrder
-getBidOrderIds
-getBidOrders
-cancelAskOrder
-cancelBidOrder
 
 dgsDelisting
 dgsDelivery

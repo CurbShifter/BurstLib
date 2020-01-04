@@ -64,6 +64,11 @@ ifeq ($(CONFIG),Release)
 endif
 
 OBJECTS := \
+  $(JUCE_OBJDIR)/mshabal_128_f6a01b14.o \
+  $(JUCE_OBJDIR)/mshabal_256_f6af8830.o \
+  $(JUCE_OBJDIR)/mshabal_512_f6d7ee33.o \
+  $(JUCE_OBJDIR)/shabal_699ef31d.o \
+  $(JUCE_OBJDIR)/sph_shabal_e73770f1.o \
   $(JUCE_OBJDIR)/aes_729163ea.o \
   $(JUCE_OBJDIR)/blowfish_4ebc719.o \
   $(JUCE_OBJDIR)/BurstAddress_fcb032e3.o \
@@ -96,6 +101,31 @@ clean:
 strip:
 	@echo Stripping BurstLib
 	-@$(STRIP) --strip-unneeded $(JUCE_OUTDIR)/$(TARGET)
+
+$(JUCE_OBJDIR)/mshabal_128_f6a01b14.o: ../../Source/crypto/hash/mshabal_128.c
+	-@mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling mshabal_128.c"
+	$(V_AT)$(CC) $(JUCE_CFLAGS) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/mshabal_256_f6af8830.o: ../../Source/crypto/hash/mshabal_256.c
+	-@mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling mshabal_256.c"
+	$(V_AT)$(CC) $(JUCE_CFLAGS) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/mshabal_512_f6d7ee33.o: ../../Source/crypto/hash/mshabal_512.c
+	-@mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling mshabal_512.c"
+	$(V_AT)$(CC) $(JUCE_CFLAGS) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/shabal_699ef31d.o: ../../Source/crypto/hash/shabal.cpp
+	-@mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling shabal.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/sph_shabal_e73770f1.o: ../../Source/crypto/hash/sph_shabal.c
+	-@mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling sph_shabal.c"
+	$(V_AT)$(CC) $(JUCE_CFLAGS) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/aes_729163ea.o: ../../Source/crypto/aes.c
 	-@mkdir -p $(JUCE_OBJDIR)

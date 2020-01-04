@@ -83,6 +83,23 @@
       <Add option="-Wno-strict-overflow"/>
     </Compiler>
     <Linker/>
+    <Unit filename="../../Source/crypto/hash/mshabal.h">
+      <Option compile="0"/>
+      <Option link="0"/>
+    </Unit>
+    <Unit filename="../../Source/crypto/hash/mshabal_128.c"/>
+    <Unit filename="../../Source/crypto/hash/mshabal_256.c"/>
+    <Unit filename="../../Source/crypto/hash/mshabal_512.c"/>
+    <Unit filename="../../Source/crypto/hash/shabal.cpp"/>
+    <Unit filename="../../Source/crypto/hash/shabal.h">
+      <Option compile="0"/>
+      <Option link="0"/>
+    </Unit>
+    <Unit filename="../../Source/crypto/hash/sph_shabal.c"/>
+    <Unit filename="../../Source/crypto/hash/sph_shabal.h">
+      <Option compile="0"/>
+      <Option link="0"/>
+    </Unit>
     <Unit filename="../../Source/crypto/aes.c"/>
     <Unit filename="../../Source/crypto/aes.h">
       <Option compile="0"/>
