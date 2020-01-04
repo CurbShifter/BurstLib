@@ -774,7 +774,7 @@ void BurstSocket::BurstSocketThread::SendFifo(const bool slot_consensus, const b
 		const int blockingLength = GetBlockingLength();
 		if (slot_consensus && slotIsblocked[currBlockSlot] >= blockingLength)
 		{
-			int bestSlot = 0; // use the slot that has the least UTx
+			uint64 bestSlot = 0; // use the slot that has the least UTx
 			int lowestQueueSize = MAX_TX_PER_SLOT;
 			for (int s = 0; s < currBlockSlot + 1; s++)
 			{

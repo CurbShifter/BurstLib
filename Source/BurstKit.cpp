@@ -539,7 +539,7 @@ String BurstKit::getAccountAliases(String str, const bool newestFirst)
 		if (aliasesJSON["aliases"].isArray() && aliasesJSON["aliases"].size() > 0)
 		{
 			StringArray aliasNames;
-			int64 aliasTime;
+			int64 aliasTime = 0;
 			int64 aliasTimeIdx = -1;
 			const int s = aliasesJSON["aliases"].size();
 			for (int i = 0; i < s; i++)
@@ -562,7 +562,7 @@ String BurstKit::getAccountAliases(String str, const bool newestFirst)
 	return String::empty;
 }
 
-String BurstKit::convertToReedSolomon(String str)
+String BurstKit::convertToReedSolomon(String str, const bool useCache)
 {
 	int accUnit = DetermineAccountUnit(str);
 	if (accUnit == 0)
@@ -572,7 +572,7 @@ String BurstKit::convertToReedSolomon(String str)
 	}
 	else if (accUnit == 2)
 	{
-		String alias = getAlias("", str.startsWithChar('@') ? str.substring(1) : str);
+		String alias = getAlias("", str.startsWithChar('@') ? str.substring(1) : str, useCache);
 		var aliasJSON;
 		Result r = JSON::parse(alias, aliasJSON);
 		str = aliasJSON["accountRS"];
@@ -590,7 +590,7 @@ String BurstKit::convertToReedSolomon(String str)
 	return str;
 }
 
-String BurstKit::convertToAccountID(String str)
+String BurstKit::convertToAccountID(String str, const bool useCache)
 {
 	if (str.compare("*") == 0)
 		return String::empty;
@@ -603,7 +603,7 @@ String BurstKit::convertToAccountID(String str)
 	}
 	else if (accUnit == 2)
 	{
-		String alias = getAlias("", str.startsWithChar('@') ? str.substring(1) : str);
+		String alias = getAlias("", str.startsWithChar('@') ? str.substring(1) : str, useCache);
 		var aliasJSON;
 		Result r = JSON::parse(alias, aliasJSON);
 		str = aliasJSON["account"];
@@ -991,11 +991,33 @@ String BurstKit::setAccountInfo( // Set account information. POST only. Refer to
 
 String BurstKit::getAlias( // Get information about a given alias. 
 	String alias, // is the alias ID (optional)
-	String aliasName) // is the name of the alias (optional if alias provided)
+	String aliasName, // is the name of the alias (optional if alias provided)
+	const bool useCache)
 {
-	return GetUrlStr(GetNode() + "burst?requestType=getAlias" +
-		(alias.isNotEmpty() ? "&alias=" + alias : String::empty) +
-		(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : String::empty));
+	String returnValue;
+
+	// optimise recurring calls for aliasses. will go wrong if alias changes.
+	if (useCache && alias.isNotEmpty() && aliasMap.contains(alias))
+	{
+		returnValue = aliasMap[alias];
+	}
+	else if (useCache && aliasName.isNotEmpty() && aliasMap.contains(aliasName))
+	{
+		returnValue = aliasMap[aliasName];
+	}
+	
+	if (returnValue.isEmpty())
+	{
+		returnValue = GetUrlStr(GetNode() + "burst?requestType=getAlias" +
+			(alias.isNotEmpty() ? "&alias=" + alias : String::empty) +
+			(aliasName.isNotEmpty() ? "&aliasName=" + aliasName : String::empty));
+
+		if (alias.isNotEmpty())
+			aliasMap.set(alias, returnValue);
+		else if (aliasName.isNotEmpty())
+			aliasMap.set(aliasName, returnValue);
+	}
+	return returnValue;
 }
 
 String BurstKit::setAlias( // Create and/or assign an alias. POST only. Refer to Create Transaction Request for common parameters. 

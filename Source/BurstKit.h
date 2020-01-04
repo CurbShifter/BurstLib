@@ -139,7 +139,8 @@ public:
 
 	String getAlias( // Get information about a given alias. 
 		String alias, // is the alias ID (optional)
-		String aliasName = String::empty); // is the name of the alias (optional if alias provided)
+		String aliasName = String::empty, // is the name of the alias (optional if alias provided)
+		const bool useCache = false);
 	String setAlias( // Create and/or assign an alias. POST only. Refer to Create Transaction Request for common parameters. 
 		String aliasName, // is the alias name
 		String aliasURI, // is the alias URI(e.g.http://www.google.com/)
@@ -196,7 +197,7 @@ public:
 	String getTransactionBytes( // Get the bytecode of a transaction. 
 		String transaction); // is the transaction ID		
 
-	String BurstKit::createMessageArgs(
+	String createMessageArgs(
 		const String message,
 		const bool isText = true, // is false if the message to encrypt is a hex string, true if the encrypted message is text
 		const bool encrpyted = false,
@@ -542,8 +543,8 @@ public:
 
 	int DetermineAccountUnit(String str);
 	String convertToAlias(String str);
-	String convertToReedSolomon(String str);
-	String convertToAccountID(String str);
+	String convertToReedSolomon(String str, const bool useCache = false);
+	String convertToAccountID(String str, const bool useCache = false);
 	String getAccountAliases(String str, const bool newestFirst = false);
 
 	virtual String GetUrlStr(const String url);
@@ -674,6 +675,8 @@ private:
 	const char *burstKitVersionString;
 	int lastErrorCode;
 	String lastErrorDescription;
+
+	HashMap<String, String> aliasMap; // optional
 
 	MemoryBlock memKey[2];
 };

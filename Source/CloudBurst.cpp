@@ -132,9 +132,9 @@ Array<MemoryBlock> CloudBurst::CreateUploadData(const String name, const MemoryB
 	compressedData = destStream.getMemoryBlock();
 
 	char type = 0;
-	uint32 offset;
-	uint32 part_size;
-	uint32 total_size;
+	uint32 offset = 0;
+	uint32 part_size = 0;
+	uint32 total_size = 0;
 	MemoryBlock hash;
 
 	int headerSize = sizeof(char) + (sizeof(uint32) * 3) + (256 / 8) + 1;
