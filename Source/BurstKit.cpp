@@ -528,12 +528,20 @@ String BurstKit::convertToAlias(String str)
 	return str;
 }
 
-String BurstKit::getAccountAliases(String str, const bool newestFirst)
+String BurstKit::getAccountAliases(String str, const bool newestFirst, const bool useCache)
 {
 	//int accUnit = DetermineAccountUnit(str);
 	//if (accUnit != 2)
 	{ // convert to the first Alias of the account
-		String aliases = getAliases(str);
+		String aliases;
+		if (useCache && getAliasesMap.contains(str))
+			aliases = getAliasesMap[str];
+		else
+		{
+			aliases = getAliases(str);
+			getAliasesMap.set(str, aliases);
+		}
+
 		var aliasesJSON;
 		Result r = JSON::parse(aliases, aliasesJSON);
 		if (aliasesJSON["aliases"].isArray() && aliasesJSON["aliases"].size() > 0)

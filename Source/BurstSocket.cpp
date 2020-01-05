@@ -710,11 +710,16 @@ void BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blo
 							marketPriceNQT = ordersArray[i]["priceNQT"].toString().getLargeIntValue() * (std::pow(10L, SOCKET_ASSET_DECIMALS));
 						}
 					}
+					if (ordersArray.size() <= 0)
+						noOrdersFound = true;
 				}
 				else noOrdersFound = true;
 			}
 			else noOrdersFound = true;
 		}
+
+		if (noOrdersFound) // some server issue..
+			return;
 
 		CreateBlock(); // make the newBlockContentsHex of the block to post
 
@@ -824,10 +829,10 @@ void BurstSocket::BurstSocketThread::SendFifo(const bool slot_consensus, const b
 				{
 					messageIsText = "true";
 					if (p.encrypted == false)
-						message = String(&(p.message[0]), p.messageSize);
+						message = MemoryBlock(&(p.message[0]), p.messageSize).toString();
 					else
 					{
-						String messageToEncrypt = String(&(p.message[0]), p.messageSize); // is either UTF - 8 text or a string of hex digits to be compressed and converted into a 1000 byte maximum bytecode then encrypted using AES
+						String messageToEncrypt = MemoryBlock(&(p.message[0]), p.messageSize).toString(); // is either UTF - 8 text or a string of hex digits to be compressed and converted into a 1000 byte maximum bytecode then encrypted using AES
 						messageToEncryptIsText = ("true"); // is false if the message to encrypt is a hex string, true if the encrypted message is text
 						encryptedMessageData = encryptTo( // Encrypt a message using AES without sending it.
 							encryptedMessageNonce,

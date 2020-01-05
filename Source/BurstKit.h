@@ -545,7 +545,7 @@ public:
 	String convertToAlias(String str);
 	String convertToReedSolomon(String str, const bool useCache = false);
 	String convertToAccountID(String str, const bool useCache = false);
-	String getAccountAliases(String str, const bool newestFirst = false);
+	String getAccountAliases(String str, const bool newestFirst = false, const bool useCache = false);
 
 	virtual String GetUrlStr(const String url);
 	String GetSecretPhraseString(const unsigned int index = 0);
@@ -676,7 +676,8 @@ private:
 	int lastErrorCode;
 	String lastErrorDescription;
 
-	HashMap<String, String> aliasMap; // optional
+	HashMap<String, String> aliasMap; // single aliases, optional
+	HashMap<String, String> getAliasesMap; // all account aliases
 
 	MemoryBlock memKey[2];
 };
