@@ -31,6 +31,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SOCKET_ASSET_ID_MAINNET "10987192031618394393"
 #define SOCKET_ASSET_ID_TESTNET "14100336206556672026"
 
+#define DEVELOPER_ADDRESS "BURST-SCKT-GBVL-X3ZD-GQHNQ"
+
 // the max slot height that can be blocked. max tx throughput is the used height times 360 each minute. ie. 10 * 360 / 60 = 600 tx/sec
 #define SOCKET_MAX_SLOTBLOCK_HEIGHT 10
 // the max possible amount of burstcoin-blocks on the chain to be blocked
@@ -64,6 +66,7 @@ public:
 	void SetNode(String hostUrl);
 	void SetSecretPhrase(String passphrase);
 	void SetForceSSL_TSL(const bool forceSSLOn);
+	void SetDonateMode(bool on);
 
 	String GetLastError(int &errorCode);
 	void SetError(int errorCode, String msg);
@@ -79,6 +82,7 @@ public:
 		void SetNode(String hostUrl);
 		void SetSecretPhrase(String passphrase);
 		void SetForceSSL_TSL(const bool forceSSLOn);
+		void SetDonateMode(bool on);
 
 		uint64 syncSidechain();
 		void run();
@@ -275,6 +279,8 @@ public:
 		bool nodeSupportsFullHashStore;
 		int socketErrorCount;
 		int hold_multiplier;
+
+		bool justDonateToDev;
 
 		// block mode
 		CriticalSection pressureLock;

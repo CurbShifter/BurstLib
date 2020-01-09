@@ -31,6 +31,11 @@ void BurstSocket::SetNode(String hostUrl)
 	socketThread.SetNode(hostUrl);
 }
 
+void BurstSocket::SetDonateMode(bool on)
+{
+	socketThread.SetDonateMode(on);
+}
+
 void BurstSocket::SetSecretPhrase(String passphrase)
 {
 	BurstKit::SetSecretPhrase(passphrase);
@@ -441,7 +446,7 @@ BurstSocket::BurstSocketThread::BurstSocketThread()
 
 void BurstSocket::BurstSocketThread::Init()
 {
-	poll_interval_ms = 5000;
+	poll_interval_ms = 10000;
 	prevUTtc = -1;
 	currActive = 0;
 	maxActive = 0;
@@ -460,6 +465,7 @@ void BurstSocket::BurstSocketThread::Init()
 	maxSlotHeight = 10;
 	currBlockSlot = 0;
 	hold_multiplier = 1;
+	justDonateToDev = false;
 }
 
 BurstSocket::BurstSocketThread::~BurstSocketThread()
@@ -470,6 +476,13 @@ void BurstSocket::BurstSocketThread::SetNode(String hostUrl)
 {
 	SetPause(true);
 	BurstKit::SetNode(hostUrl);
+	SetPause(false);
+}
+
+void BurstSocket::BurstSocketThread::SetDonateMode(bool on)
+{
+	SetPause(true);
+	justDonateToDev = on;
 	SetPause(false);
 }
 
@@ -671,99 +684,136 @@ void BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blo
 	}
 	else
 	{
-		// by using the network the user holds max SOCKET_USER_TOKEN_HOLD_SIZE_IN_BURST_NQT tokens. 
-		// a bid or ask order for 0.1 burst in tokens for each blocker tx.
-		// get the market price for the asset. getAskOrders and buy or sell at market price, depending on the holdings
-		String asset((IsOnTestNet() ? SOCKET_ASSET_ID_TESTNET : SOCKET_ASSET_ID_MAINNET));
 		uint64 feeNQTint = baseNQT + 1;
 		String feeNQT(feeNQTint);
-		String askDeadlineMinutes("1440");
-		String bidDeadlineMinutes("8"); // 8 min deadline. as the message contents for the bid orders needs to be as recent as possible
-		
-		uint64 marketPriceNQT = 0;
-		int maxOrders = 1;
-		int orderIdx = 0;
-		bool noOrdersFound = false;
 
-		// calculate the ask and bid price against current market
-		// our bid matches the lowset current ask
-		// our ask is one SOCKET_ASSET_BID_STEP_NQT above our bid
-		while (marketPriceNQT == 0 && !noOrdersFound)
-		{
-			String allOrdersStr = getAskOrders(asset, String(orderIdx), String(orderIdx + (maxOrders - 1)));
-			orderIdx += maxOrders;
-			var allOrdersJSON;
-			if (JSON::parse(allOrdersStr, allOrdersJSON).wasOk() && !threadShouldExit())
+		if (justDonateToDev)
+		{ // support for non asset trading blockers
+			String result;
+			for (int i = 0; i < blocks; i++)
 			{
-				var ordersArray = allOrdersJSON.getProperty("askOrders", String::empty);
-				if (ordersArray.isArray())
+				String deadlineMinutes(8 + i); // 8 min deadline + blocker num to space out deadlines
+				
+				const String amountNQT = String::formatted("%lu", std::pow(10, 7));
+				result = sendMoney(DEVELOPER_ADDRESS, amountNQT, feeNQT, deadlineMinutes, String::empty, true);
+				
+				String errorCode = GetJSONvalue(result, "errorCode");
+				error = GetJSONvalue(result, "error");
+				errorDescription = GetJSONvalue(result, "errorDescription");
+				if (result.isNotEmpty() && error.isEmpty() && errorDescription.isEmpty())
 				{
-					for (int i = 0; i < ordersArray.size() && !threadShouldExit(); i++)
+					String txId = GetJSONvalue(result, "transaction");
+					if (txId.isNotEmpty())
 					{
-						String accountRS = ordersArray[i]["accountRS"].toString();
-						uint64 quantityQNT = GetUINT64(ordersArray[i]["quantityQNT"].toString());
-					
-						// save ask the order that has at least the minimum needed. and ensure its not the users own order
-						if (quantityQNT >= pow(10, SOCKET_ASSET_DECIMALS) && // quantity must be 1 token
-							accountRS.compareIgnoreCase(GetAccountRS()) != 0) // ignore own orders
-						{
-							marketPriceNQT = ordersArray[i]["priceNQT"].toString().getLargeIntValue() * (std::pow(10L, SOCKET_ASSET_DECIMALS));
-						}
+						blockerTxIds.add(txId); // remember to check if the tx was mined
+						blockFeesNQT += (feeNQTint); // total tx fees paid
 					}
-					if (ordersArray.size() <= 0)
-						noOrdersFound = true;
+				}
+				else
+				{ // ensure we are not spamming
+					if (errorCode.isNotEmpty() ||
+						error.compareIgnoreCase("Insufficient funds") == 0 ||
+						errorDescription.compareIgnoreCase("Not enough funds") == 0)
+						lowFunds = true;
+				}
+			}
+		}
+		else
+		{
+			// by using the network the user holds max SOCKET_USER_TOKEN_HOLD_SIZE_IN_BURST_NQT tokens. 
+			// a bid or ask order for 0.1 burst in tokens for each blocker tx.
+			// get the market price for the asset. getAskOrders and buy or sell at market price, depending on the holdings
+			String asset((IsOnTestNet() ? SOCKET_ASSET_ID_TESTNET : SOCKET_ASSET_ID_MAINNET));
+
+			uint64 marketPriceNQT = 0;
+			int maxOrders = 1;
+			int orderIdx = 0;
+			bool noOrdersFound = false;
+
+			// calculate the ask and bid price against current market
+			// our bid matches the lowset current ask
+			// our ask is one SOCKET_ASSET_BID_STEP_NQT above our bid
+			while (marketPriceNQT == 0 && !noOrdersFound)
+			{
+				String allOrdersStr = getAskOrders(asset, String(orderIdx), String(orderIdx + (maxOrders - 1)));
+				orderIdx += maxOrders;
+				var allOrdersJSON;
+				if (JSON::parse(allOrdersStr, allOrdersJSON).wasOk() && !threadShouldExit())
+				{
+					var ordersArray = allOrdersJSON.getProperty("askOrders", String::empty);
+					if (ordersArray.isArray())
+					{
+						for (int i = 0; i < ordersArray.size() && !threadShouldExit(); i++)
+						{
+							String accountRS = ordersArray[i]["accountRS"].toString();
+							uint64 quantityQNT = GetUINT64(ordersArray[i]["quantityQNT"].toString());
+
+							// save ask the order that has at least the minimum needed. and ensure its not the users own order
+							if (quantityQNT >= pow(10, SOCKET_ASSET_DECIMALS) && // quantity must be 1 token
+								accountRS.compareIgnoreCase(GetAccountRS()) != 0) // ignore own orders
+							{
+								marketPriceNQT = ordersArray[i]["priceNQT"].toString().getLargeIntValue() * (std::pow(10L, SOCKET_ASSET_DECIMALS));
+							}
+						}
+						if (ordersArray.size() <= 0)
+							noOrdersFound = true;
+					}
+					else noOrdersFound = true;
 				}
 				else noOrdersFound = true;
 			}
-			else noOrdersFound = true;
-		}
 
-		if (noOrdersFound) // some server issue..
-			return;
+			if (noOrdersFound) // some server issue..
+				return;
 
-		CreateBlock(); // make the newBlockContentsHex of the block to post
+			CreateBlock(); // make the newBlockContentsHex of the block to post
 
-		// the bid / ask price(in NQT)
-		const uint64 bidPriceNQT((marketPriceNQT + SOCKET_ASSET_ORDERBOOK_STEP_NQT)); // we add a order step amount here, because the chain will match the orders and not take more burst than needed. and this ensures we have enough orders to fill the quantity needed
-		const uint64 askPriceNQT((marketPriceNQT + (SOCKET_ASSET_ORDERBOOK_STEP_NQT * ((uint64)slotNr + 1)))); // we add a order step amount here times the slot height (to offset tx fees), as this will increase the possibility for a return upon using and supporting the network with blocker txs
-		// calc the amount of plancks per QNT of the asset
-		const String bidPriceCQTstr(jmax<uint64>(1, bidPriceNQT / (std::pow(10L, SOCKET_ASSET_DECIMALS)))); // divide by 10^SOCKET_ASSET_DECIMALS. needed to match API QNT to NQT conversion
-		const String askPriceCQTstr(jmax<uint64>(1, askPriceNQT / (std::pow(10L, SOCKET_ASSET_DECIMALS)))); // max decimals of the price is the 8 decimals of burst minus the decimals of the asset
-		
-		const uint64 bidQuantityQNT = (jmin<uint64>(balance_root_NQT, SOCKET_ASSET_BASE_BURST_QUANTITY_QNT) * (std::pow(10L, 8L)) / (marketPriceNQT)); // the ask quantity in QNT of the asset is SOCKET_ASSET_BASE_BURST_QUANTITY_QNT divided by the bid price
-		const String bidQuantityQNTStr = String::formatted("%lu", bidQuantityQNT);
-		const uint64 askQuantityQNT = (jmin<uint64>(balance_socket_asset_QNT, (SOCKET_ASSET_BASE_BURST_QUANTITY_QNT * std::pow(10L, 8L)) / (marketPriceNQT))); // the ask quantity in QNT of the asset is SOCKET_ASSET_BASE_BURST_QUANTITY_QNT divided by the ask price. but at most the amount the account has
-		const String askQuantityQNTStr = String::formatted("%lu", askQuantityQNT);
+			// the bid / ask price(in NQT)
+			const uint64 bidPriceNQT((marketPriceNQT + SOCKET_ASSET_ORDERBOOK_STEP_NQT)); // we add a order step amount here, because the chain will match the orders and not take more burst than needed. and this ensures we have enough orders to fill the quantity needed
+			const uint64 askPriceNQT((marketPriceNQT + (SOCKET_ASSET_ORDERBOOK_STEP_NQT * ((uint64)slotNr + 1)))); // we add a order step amount here times the slot height (to offset tx fees), as this will increase the possibility for a return upon using and supporting the network with blocker txs
+			// calc the amount of plancks per QNT of the asset
+			const String bidPriceCQTstr(jmax<uint64>(1, bidPriceNQT / (std::pow(10L, SOCKET_ASSET_DECIMALS)))); // divide by 10^SOCKET_ASSET_DECIMALS. needed to match API QNT to NQT conversion
+			const String askPriceCQTstr(jmax<uint64>(1, askPriceNQT / (std::pow(10L, SOCKET_ASSET_DECIMALS)))); // max decimals of the price is the 8 decimals of burst minus the decimals of the asset
 
-		for (int i = 0; i < blocks; i++)
-		{
-			uint64 needed_balance_in_burst_NQT = SOCKET_USER_TOKEN_HOLD_SIZE_IN_BURST_NQT * GetHoldSize();
-			uint64 needed_balance_socket_asset_QNT = (needed_balance_in_burst_NQT * std::pow(10L, 8L)) / marketPriceNQT; // the total amount the user should hold in Burst divided by the market price of the token
-			const bool askOrder = (balance_socket_asset_QNT >= needed_balance_socket_asset_QNT);
-			String result;
-			if (askOrder) // bid or ask depending on token holdings
-				result = placeAskOrder(asset, askQuantityQNTStr, askPriceCQTstr, feeNQT, askDeadlineMinutes, String::empty, false, true);
-			else result = placeBidOrder(asset, bidQuantityQNTStr, bidPriceCQTstr, feeNQT, bidDeadlineMinutes, newBlockContentsHex, false, true); // add the newBlockContentsHex only in the bid orders, so it mines faster (not having to wait for market bid as ask order)
-			//String result = sendMoneyWithMessage(recipient, amountNQT, feeNQT, deadlineMinutes, message, false, String::empty, true);
+			const uint64 bidQuantityQNT = (jmin<uint64>(balance_root_NQT, SOCKET_ASSET_BASE_BURST_QUANTITY_QNT) * (std::pow(10L, 8L)) / (marketPriceNQT)); // the ask quantity in QNT of the asset is SOCKET_ASSET_BASE_BURST_QUANTITY_QNT divided by the bid price
+			const String bidQuantityQNTStr = String::formatted("%lu", bidQuantityQNT);
+			const uint64 askQuantityQNT = (jmin<uint64>(balance_socket_asset_QNT, (SOCKET_ASSET_BASE_BURST_QUANTITY_QNT * std::pow(10L, 8L)) / (marketPriceNQT))); // the ask quantity in QNT of the asset is SOCKET_ASSET_BASE_BURST_QUANTITY_QNT divided by the ask price. but at most the amount the account has
+			const String askQuantityQNTStr = String::formatted("%lu", askQuantityQNT);
 
-			String errorCode = GetJSONvalue(result, "errorCode");
-			error = GetJSONvalue(result, "error");
-			errorDescription = GetJSONvalue(result, "errorDescription");
-			if (result.isNotEmpty() && error.isEmpty() && errorDescription.isEmpty())
+			for (int i = 0; i < blocks; i++)
 			{
-				String txId = GetJSONvalue(result, "transaction");
-				if (txId.isNotEmpty())
+				uint64 needed_balance_in_burst_NQT = SOCKET_USER_TOKEN_HOLD_SIZE_IN_BURST_NQT * GetHoldSize();
+				uint64 needed_balance_socket_asset_QNT = (needed_balance_in_burst_NQT * std::pow(10L, 8L)) / marketPriceNQT; // the total amount the user should hold in Burst divided by the market price of the token
+				const bool askOrder = (balance_socket_asset_QNT >= needed_balance_socket_asset_QNT);
+	
+				// add blocks i here to space the deadlines out. less risk of having a moment without any blockers
+				String askDeadlineMinutes(16 + i); // lowered this deadline. if you just sold an asset and posted a ask order just before. it can get stuck in the mempool (for deadline amount of time)
+				String bidDeadlineMinutes(8 + i); // 8 min deadline. as the message contents for the bid orders needs to be as recent as possible
+
+				String result;
+				if (askOrder) // bid or ask depending on token holdings
+					result = placeAskOrder(asset, askQuantityQNTStr, askPriceCQTstr, feeNQT, askDeadlineMinutes, String::empty, false, true);
+				else result = placeBidOrder(asset, bidQuantityQNTStr, bidPriceCQTstr, feeNQT, bidDeadlineMinutes, newBlockContentsHex, false, true); // add the newBlockContentsHex only in the bid orders, so it mines faster (not having to wait for market bid as ask order)
+
+				String errorCode = GetJSONvalue(result, "errorCode");
+				error = GetJSONvalue(result, "error");
+				errorDescription = GetJSONvalue(result, "errorDescription");
+				if (result.isNotEmpty() && error.isEmpty() && errorDescription.isEmpty())
 				{
-					blockerTxIds.add(txId); // remember to check if the tx was mined
-					blockFeesNQT += (feeNQTint); // total tx fees paid
+					String txId = GetJSONvalue(result, "transaction");
+					if (txId.isNotEmpty())
+					{
+						blockerTxIds.add(txId); // remember to check if the tx was mined
+						blockFeesNQT += (feeNQTint); // total tx fees paid
+					}
 				}
-			}
-			else
-			{ // ensure we are not spamming
-				if (errorCode.isNotEmpty() || 
-					error.compareIgnoreCase("Insufficient funds") == 0 || 
-					errorDescription.compareIgnoreCase("Not enough funds") == 0)
-					lowFunds = true;
+				else
+				{ // ensure we are not spamming
+					if (errorCode.isNotEmpty() ||
+						error.compareIgnoreCase("Insufficient funds") == 0 ||
+						errorDescription.compareIgnoreCase("Not enough funds") == 0)
+						lowFunds = true;
+				}
 			}
 		}
 	}
@@ -1354,6 +1404,11 @@ void BurstSocket::BurstSocketThread::run()
 	const ScopedTryLock tryLock(runLock);
 	if (tryLock.isLocked() && !threadShouldExit())
 	{
+		// check if the asset exists. else default back to SetDonateMode. useful for private chains
+		String result = getAsset(IsOnTestNet() ? SOCKET_ASSET_ID_TESTNET : SOCKET_ASSET_ID_MAINNET);
+		if(result.contains(IsOnTestNet() ? SOCKET_ASSET_ID_TESTNET : SOCKET_ASSET_ID_MAINNET) == false)
+			SetDonateMode(true);
+
 		Random random;
 		uint64 BTtc = 0;
 		bool slot_consensus = true;

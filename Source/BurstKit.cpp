@@ -302,6 +302,7 @@ uint64 BurstKit::GetAssetBalance(const String assetID, const unsigned int index)
 			}
 		}
 	}
+	return 0;
 }
 
 uint64 BurstKit::GetBalance(const unsigned int index)
@@ -534,15 +535,11 @@ String BurstKit::getAccountAliases(String str, const bool newestFirst, const boo
 	//if (accUnit != 2)
 	{ // convert to the first Alias of the account
 		String aliases;
+		var aliasesJSON;
 		if (useCache && getAliasesMap.contains(str))
 			aliases = getAliasesMap[str];
-		else
-		{
-			aliases = getAliases(str);
-			getAliasesMap.set(str, aliases);
-		}
+		else aliases = getAliases(str);
 
-		var aliasesJSON;
 		Result r = JSON::parse(aliases, aliasesJSON);
 		if (aliasesJSON["aliases"].isArray() && aliasesJSON["aliases"].size() > 0)
 		{
@@ -563,6 +560,9 @@ String BurstKit::getAccountAliases(String str, const bool newestFirst, const boo
 			// move the newest in front
 			if (newestFirst && aliasTimeIdx >= 0 && aliasTimeIdx < aliasNames.size())
 				aliasNames.move(aliasTimeIdx, 0);
+			
+			if (aliasNames .size() > 0) // cache
+				getAliasesMap.set(str, aliases);
 
 			return aliasNames.joinIntoString(";");
 		}
