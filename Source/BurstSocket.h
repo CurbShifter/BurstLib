@@ -236,7 +236,8 @@ public:
 		void GetActive(uint64 &currActiveIn, uint64 &maxActiveIn);
 		float GetPressureIndicator(int &slot);
 
-		void SendBlocker(const int slotNr, const int blocks);
+		int SendBlockerTransactions(const bool slot_consensus);
+		int SendBlocker(const int slotNr, const int blocks);
 		void SendFifo(const bool slot_consensus, const bool blocking, const int64 mempoolSize, const int64 activeStake);
 
 		void SetCurrActive(uint64 currActiveIn);
@@ -248,7 +249,6 @@ public:
 
 		void CalculateSlotAllocation(Array<uint64> &ut_ids, Array<uint64> &ut_fees);
 		void CalculateSlotPressures(const bool slot_consensus);
-		void SendBlockerTransactions(const bool slot_consensus);
 		void SetPressureIndicator(int slot, float pressure);
 				
 		Array<txPacketIn> sendEncryptedMessages;

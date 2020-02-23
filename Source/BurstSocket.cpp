@@ -461,7 +461,7 @@ void BurstSocket::BurstSocketThread::Init()
 	memset(&slotQueue[0], 0, sizeof(int) * MAX_FEE_SLOTS);
 	pressure = 0.f;
 	pressureSlot = 0;
-	currBlockingLength = 3;
+	currBlockingLength = 4;
 	maxSlotHeight = 10;
 	currBlockSlot = 0;
 	hold_multiplier = 1;
@@ -635,8 +635,9 @@ void BurstSocket::BurstSocketThread::SetForceBlock(const bool force)
 	this->forceBlock = force;
 }
 
-void BurstSocket::BurstSocketThread::SendBlockerTransactions(const bool slot_consensus)
+int BurstSocket::BurstSocketThread::SendBlockerTransactions(const bool slot_consensus)
 {
+	int sendBlockers = 0;
 	if (messageTxIds.size() > 0 || (slot_consensus && fifoOut.packetFifo.getNumReady() > 0) || forceBlock) // if there are active ETx or upcoming ones or forceBlock is on
 	{ // add new blockers if needed
 		const int blockingLength = GetBlockingLength();
@@ -645,13 +646,15 @@ void BurstSocket::BurstSocketThread::SendBlockerTransactions(const bool slot_con
 		// create new blocker txs if the amount of blocked slots is lower than requierd for multiple upcoming blocks and the slots below it
 		if (blockers_needed > 0) 
 		{
-			SendBlocker(currBlockSlot, blockers_needed); // add new blockers, always on 'currBlockSlot' otherwise our messages can fall outside the blocking scope
+			sendBlockers += SendBlocker(currBlockSlot, blockers_needed); // add new blockers, always on 'currBlockSlot' otherwise our messages can fall outside the blocking scope
 		}
 	}
+	return sendBlockers;
 }
 
-void BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blocks) // slotNr: 0-1020
+int BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blocks) // slotNr: 0-1020
 {
+	int sendBlockers = 0;
 	// get current balance
 	String accountStr = getAccount(GetAccountRS());
 	var accountJson;
@@ -764,7 +767,7 @@ void BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blo
 			}
 
 			if (noOrdersFound) // some server issue..
-				return;
+				return 0;
 
 			CreateBlock(); // make the newBlockContentsHex of the block to post
 
@@ -787,8 +790,8 @@ void BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blo
 				const bool askOrder = (balance_socket_asset_QNT >= needed_balance_socket_asset_QNT);
 	
 				// add blocks i here to space the deadlines out. less risk of having a moment without any blockers
-				String askDeadlineMinutes(16 + i); // lowered this deadline. if you just sold an asset and posted a ask order just before. it can get stuck in the mempool (for deadline amount of time)
-				String bidDeadlineMinutes(8 + i); // 8 min deadline. as the message contents for the bid orders needs to be as recent as possible
+				String askDeadlineMinutes(8 + i); // lowered this deadline. if you just sold an asset and posted a ask order just before. it can get stuck in the mempool (for deadline amount of time)
+				String bidDeadlineMinutes(4 + i); // 8 min deadline. as the message contents for the bid orders needs to be as recent as possible
 
 				String result;
 				if (askOrder) // bid or ask depending on token holdings
@@ -805,6 +808,8 @@ void BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blo
 					{
 						blockerTxIds.add(txId); // remember to check if the tx was mined
 						blockFeesNQT += (feeNQTint); // total tx fees paid
+
+						sendBlockers++;
 					}
 				}
 				else
@@ -817,6 +822,7 @@ void BurstSocket::BurstSocketThread::SendBlocker(const int slotNr, const int blo
 			}
 		}
 	}
+	return sendBlockers;
 }
 
 void BurstSocket::BurstSocketThread::SendFifo(const bool slot_consensus, const bool useCustody, const int64 mempoolSize, const int64 activeStake)
@@ -1414,6 +1420,7 @@ void BurstSocket::BurstSocketThread::run()
 		bool slot_consensus = true;
 		int prevNumUTs = -1;
 		int activeStake = 0;
+		int sendBlockers = 0;
 		while (!threadShouldExit() && slot_consensus)
 		{
 			while (!threadShouldExit() && pause)
@@ -1451,7 +1458,7 @@ void BurstSocket::BurstSocketThread::run()
 						CalculateSlotPressures(slot_consensus);
 					}
 					if (useCustody == false)
-						SendBlockerTransactions(slot_consensus);  // send the blocker txs if needed
+						sendBlockers += SendBlockerTransactions(slot_consensus);  // send the blocker txs if needed
 				}
 				ForgeCheck(slot_consensus); // check if msgs are being forged/mined
 
@@ -1461,7 +1468,8 @@ void BurstSocket::BurstSocketThread::run()
 					SetCurrActive(activeStake);
 				}
 
-				SendFifo(slot_consensus, useCustody, prevNumUTs, activeStake);
+				if (sendBlockers <= 0) // ensure some time between the blockers and msgs send
+					SendFifo(slot_consensus, useCustody, prevNumUTs, activeStake);
 
 				do {
 					Time::waitForMillisecondCounter(Time::getApproximateMillisecondCounter() + 500); // suspend, prevent too many server requests

@@ -36,6 +36,8 @@ using namespace juce;
 #define MAX_FEE_SLOTS (1020)
 #define MAX_TX_PER_SLOT 360
 
+#define URL_TIMEOUT_MS 3000
+
 class BurstKit
 {
 public:

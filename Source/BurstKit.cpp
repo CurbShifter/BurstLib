@@ -441,8 +441,30 @@ String BurstKit::GetJSONvalue(const String json, const String key)
 
 String BurstKit::GetUrlStr(const String url)
 {
-	const String r =  URL(url).readEntireTextStream(true);
-	return r;
+	const bool usePostCommand = true;
+	String extraHeaders = String::empty;
+	const int timeOutMs = URL_TIMEOUT_MS;
+	StringPairArray responseHeaders;
+	int statusCode = 0;
+	const int numRedirectsToFollow = 5;
+	String httpRequestCmd = String::empty;
+
+	const ScopedPointer<InputStream> in = URL(url).createInputStream(
+		usePostCommand,
+		nullptr, // OpenStreamProgressCallback* const progressCallback;
+		nullptr, // void* const progressCallbackContext;
+		extraHeaders,
+		timeOutMs,
+		&responseHeaders,
+		&statusCode,
+		numRedirectsToFollow,
+		httpRequestCmd);
+
+	if (in != nullptr)
+		return in->readEntireStreamAsString();
+
+	return String::empty;
+	//return URL(url).readEntireTextStream(true);
 }
 
 var BurstKit::GetUrlJson(const String urlStr, String *json)
@@ -451,7 +473,8 @@ var BurstKit::GetUrlJson(const String urlStr, String *json)
 	String jsonLocal;
 	if (json == nullptr)
 		json = &jsonLocal;
-	*json = URL(url).readEntireTextStream(true);
+	//*json = URL(url).readEntireTextStream(true);
+	*json = GetUrlStr(url);
 
 	var jsonStructure;
 	Result r = JSON::parse(*json, jsonStructure);
@@ -749,9 +772,30 @@ String BurstKit::broadcastTransaction( // Broadcast a transaction to the network
 		String post("requestType=broadcastTransaction" + (signedTransactionBytesStrHex.isNotEmpty() ? "&transactionBytes=" + signedTransactionBytesStrHex : String::empty));
 
 		URL postURL = url.withPOSTData(MemoryBlock(post.toUTF8(), post.getNumBytesAsUTF8()));
-		String json = postURL.readEntireTextStream(true);
+		//String json = postURL.readEntireTextStream(true);
+		//return json;
 
-		return json;
+		const bool usePostCommand = true;
+		String extraHeaders = String::empty;
+		const int timeOutMs = URL_TIMEOUT_MS;
+		StringPairArray responseHeaders;
+		int statusCode = 0;
+		const int numRedirectsToFollow = 5;
+		String httpRequestCmd = String::empty;
+
+		const ScopedPointer<InputStream> in = postURL.createInputStream(
+			usePostCommand,
+			nullptr, // OpenStreamProgressCallback* const progressCallback;
+			nullptr, // void* const progressCallbackContext;
+			extraHeaders,
+			timeOutMs,
+			&responseHeaders,
+			&statusCode,
+			numRedirectsToFollow,
+			httpRequestCmd);
+
+		if (in != nullptr)
+			return in->readEntireStreamAsString();
 	}
 	return String::empty;
 }
